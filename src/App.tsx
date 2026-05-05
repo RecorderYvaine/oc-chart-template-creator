@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useStore } from './store';
 import { Download, Palette, Layers, Columns, RectangleHorizontal, Type, Sparkles, Scaling, ALargeSmall, Plus, Trash2, Maximize, Minus, TypeOutline, Eye, EyeOff } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 function App() {
@@ -30,22 +30,25 @@ function App() {
     const noExportElements = document.querySelectorAll('.no-export');
     noExportElements.forEach(el => (el as HTMLElement).style.display = 'none');
     
-    // Add a tiny delay to allow the browser to repaint
-    await new Promise(r => setTimeout(r, 100));
+    // Use requestAnimationFrame to ensure the DOM has updated before capturing
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     try {
-      const dataUrl = await toPng(canvasRef.current, { 
-        quality: 1, 
-        pixelRatio: 2,
-        backgroundColor: theme.bgColor
+      const canvas = await html2canvas(canvasRef.current, {
+        scale: window.devicePixelRatio || 1, // dynamically use device pixel ratio, avoids huge 2x multiplier on 3000px wide screens
+        backgroundColor: theme.bgColor,
+        useCORS: true,
+        allowTaint: true,
+        logging: false
       });
+      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = 'meme-template.png';
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error('Failed to export PNG', err);
-      alert('导出图片失败，可能是图片分辨率过高或字体跨域问题。');
+      alert('导出图片失败，可能是图片分辨率过大（当前宽度过高），请尝试调小左侧的 Size(Width) 或关闭做旧特效重试。');
     } finally {
       // Restore visibility
       noExportElements.forEach(el => (el as HTMLElement).style.display = '');
@@ -57,14 +60,18 @@ function App() {
     
     const noExportElements = document.querySelectorAll('.no-export');
     noExportElements.forEach(el => (el as HTMLElement).style.display = 'none');
-    await new Promise(r => setTimeout(r, 100));
+    
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     try {
-      const dataUrl = await toPng(canvasRef.current, { 
-        quality: 1, 
-        pixelRatio: 2,
-        backgroundColor: theme.bgColor
+      const canvas = await html2canvas(canvasRef.current, {
+        scale: window.devicePixelRatio || 1,
+        backgroundColor: theme.bgColor,
+        useCORS: true,
+        allowTaint: true,
+        logging: false
       });
+      const dataUrl = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: canvasRef.current.offsetWidth > canvasRef.current.offsetHeight ? 'landscape' : 'portrait',
         unit: 'px',
@@ -74,7 +81,7 @@ function App() {
       pdf.save('meme-template.pdf');
     } catch (err) {
       console.error('Failed to export PDF', err);
-      alert('导出PDF失败。');
+      alert('导出PDF失败，可能是图片分辨率过大（当前宽度过高），请尝试调小左侧的 Size(Width) 或关闭做旧特效重试。');
     } finally {
       noExportElements.forEach(el => (el as HTMLElement).style.display = '');
     }
@@ -137,7 +144,6 @@ function App() {
                 <option value='"Zhi Mang Xing", cursive'>志莽行书</option>
                 <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
               </select>
-            </div>
 
             <div className="flex justify-between items-center">
               <label className="text-sm flex items-center gap-1"><TypeOutline className="w-4 h-4"/> 主标题大小</label>
@@ -274,7 +280,7 @@ function App() {
       </div>
 
       {/* Main Canvas Area */}
-      <div className="flex-1 overflow-auto p-8 flex justify-center items-start bg-[#111]">
+      <div className="flex-1 overflow-auto p-8 flex justify-center items-start bg-neutral-800" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
         <div 
           ref={canvasRef}
           className="p-12 shadow-2xl relative transition-all duration-300"

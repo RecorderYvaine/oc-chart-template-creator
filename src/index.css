@@ -1,13 +1,6 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'Qiji';
-  src: url('https://cdn.jsdelivr.net/gh/LingDong-/qiji-font@master/qiji-fallback.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-
-@font-face {
   font-family: 'QijiCombo';
   src: url('/qiji-combo.ttf') format('truetype');
   font-weight: normal;
