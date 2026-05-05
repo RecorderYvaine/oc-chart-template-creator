@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useStore } from './store';
-import { Download, Palette, Layers, Columns, RectangleHorizontal, Type, Sparkles, Scaling, ALargeSmall, Plus, Trash2, Maximize, Minus, TypeOutline, Eye, EyeOff } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { Download, Palette, Layers, Columns, RectangleHorizontal, Type, Sparkles, Scaling, ALargeSmall, Plus, Trash2, Maximize, Minus, TypeOutline, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 function App() {
@@ -12,6 +12,7 @@ function App() {
     addExtraLine, removeExtraLine, updateExtraLine
   } = useStore();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--oc-bg', theme.bgColor);
@@ -24,7 +25,8 @@ function App() {
   }, [theme]);
 
   const handleExportPNG = async () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || isExporting) return;
+    setIsExporting(true);
     
     // Temporarily hide all 'no-export' elements directly via DOM to avoid html-to-image filter issues
     const noExportElements = document.querySelectorAll('.no-export');
@@ -34,29 +36,29 @@ function App() {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     try {
-      const canvas = await html2canvas(canvasRef.current, {
-        scale: window.devicePixelRatio || 1, // dynamically use device pixel ratio, avoids huge 2x multiplier on 3000px wide screens
+      const dataUrl = await toPng(canvasRef.current, { 
+        quality: 1.0, 
+        pixelRatio: window.devicePixelRatio > 2 ? 2 : window.devicePixelRatio, // Cap at 2x for performance
         backgroundColor: theme.bgColor,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
+        cacheBust: true,
       });
-      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = 'meme-template.png';
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error('Failed to export PNG', err);
-      alert('导出图片失败，可能是图片分辨率过大（当前宽度过高），请尝试调小左侧的 Size(Width) 或关闭做旧特效重试。');
+      alert('导出图片失败。如果 Size(Width) 设置得过大，请尝试调小后再试。');
     } finally {
       // Restore visibility
       noExportElements.forEach(el => (el as HTMLElement).style.display = '');
+      setIsExporting(false);
     }
   };
 
   const handleExportPDF = async () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || isExporting) return;
+    setIsExporting(true);
     
     const noExportElements = document.querySelectorAll('.no-export');
     noExportElements.forEach(el => (el as HTMLElement).style.display = 'none');
@@ -64,14 +66,12 @@ function App() {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     try {
-      const canvas = await html2canvas(canvasRef.current, {
-        scale: window.devicePixelRatio || 1,
+      const dataUrl = await toPng(canvasRef.current, { 
+        quality: 1.0, 
+        pixelRatio: window.devicePixelRatio > 2 ? 2 : window.devicePixelRatio,
         backgroundColor: theme.bgColor,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
+        cacheBust: true,
       });
-      const dataUrl = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: canvasRef.current.offsetWidth > canvasRef.current.offsetHeight ? 'landscape' : 'portrait',
         unit: 'px',
@@ -81,9 +81,10 @@ function App() {
       pdf.save('meme-template.pdf');
     } catch (err) {
       console.error('Failed to export PDF', err);
-      alert('导出PDF失败，可能是图片分辨率过大（当前宽度过高），请尝试调小左侧的 Size(Width) 或关闭做旧特效重试。');
+      alert('导出PDF失败。');
     } finally {
       noExportElements.forEach(el => (el as HTMLElement).style.display = '');
+      setIsExporting(false);
     }
   };
 
@@ -271,11 +272,23 @@ function App() {
         {/* Export */}
         <div className="mt-auto">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <Download className="w-4 h-4" /> Export Template
+            <Download className="w-4 h-4" /> 导出模板
           </h2>
           <div className="flex gap-2">
-            <button onClick={handleExportPNG} className="flex-1 bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-500 transition-colors">PNG</button>
-            <button onClick={handleExportPDF} className="flex-1 bg-[#444] text-white py-2 rounded-md font-medium hover:bg-[#555] transition-colors">PDF</button>
+            <button 
+              disabled={isExporting}
+              onClick={handleExportPNG} 
+              className="flex-1 bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'PNG'}
+            </button>
+            <button 
+              disabled={isExporting}
+              onClick={handleExportPDF} 
+              className="flex-1 bg-[#444] text-white py-2 rounded-md font-medium hover:bg-[#555] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'PDF'}
+            </button>
           </div>
         </div>
       </div>
