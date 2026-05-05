@@ -144,6 +144,7 @@ function App() {
                 <option value='"Zhi Mang Xing", cursive'>志莽行书</option>
                 <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
               </select>
+            </div>
 
             <div className="flex justify-between items-center">
               <label className="text-sm flex items-center gap-1"><TypeOutline className="w-4 h-4"/> 主标题大小</label>
@@ -534,7 +535,6 @@ function App() {
 
         </div>
       </div>
-    </div>
     </div>
   );
 }
