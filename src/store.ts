@@ -16,7 +16,7 @@ export interface GridItem {
   subtitleColor?: string;
   titleSize?: number;
   subtitleSize?: number;
-  textOffsetY?: number; // Added to adjust text position individually
+  textOffsetY?: number;
   flexGrow?: boolean;
   extraLines?: TextLine[];
   showSubtitle?: boolean;
@@ -43,7 +43,7 @@ interface AppState {
     titleSize: number;
     subtitleSize: number;
     textMarginTop: number;
-    titleSubtitleGap: number; // Added for gap between title and subtitle
+    titleSubtitleGap: number;
   };
   title: string;
   author: string;
@@ -79,7 +79,7 @@ const createEmptyItem = (): GridItem => ({
   extraLines: [],
 });
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>()((set) => ({
   theme: {
     bgColor: '#000000',
     textColor: '#ffffff',
