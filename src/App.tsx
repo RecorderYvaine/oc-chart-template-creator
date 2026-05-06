@@ -1,7 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useStore } from './store';
-import { Plus, Trash2, Eye, EyeOff, Palette, Columns, Layers, Loader2, ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, X, Search } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, Palette, Columns, Layers, Loader2, ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, X, Search, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { domToPng } from 'modern-screenshot';
+
+// Helper to determine if a hex color is light
+const isLightColor = (color: string) => {
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16) || 0;
+  const g = parseInt(hex.substr(2, 2), 16) || 0;
+  const b = parseInt(hex.substr(4, 2), 16) || 0;
+  const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return brightness > 155;
+};
 
 function App() {
   const s = useStore();
@@ -9,19 +19,17 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState('');
-  const [isFontLoading, setIsFontLoading] = useState(false);
+  const [isFontLoading, setIsFontLoading] = useState(true);
+  const [zoom, setZoom] = useState(1);
 
+  // Preload font immediately on mount in the background
   useEffect(() => {
-    if (!s.theme) return;
-    if (s.theme.fontFamily.includes('Qiji')) {
-      setIsFontLoading(true);
-      document.fonts.load('1em "QijiCombo"').then(() => {
-        setIsFontLoading(false);
-      }).catch(() => setIsFontLoading(false));
-    } else {
+    document.fonts.load('1em "QijiCombo"').then(() => {
       setIsFontLoading(false);
-    }
-  }, [s.theme.fontFamily]);
+    }).catch(() => {
+      setIsFontLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     if (!s.theme) return;
@@ -89,15 +97,15 @@ function App() {
     <div className="flex h-screen bg-[#1a1a1a] text-gray-300 font-sans overflow-hidden text-[15px]">
       {/* Preview Modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+        <div className={`fixed inset-0 z-[100] ${isLightColor(s.theme.bgColor) ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
           <div className="absolute top-6 right-8 flex gap-4">
              <button onClick={handleDownload} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"><Download className="w-5 h-5" /> 确认下载图片</button>
-             <button onClick={() => setPreviewUrl(null)} className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full shadow-2xl transition-all"><X className="w-6 h-6" /></button>
+             <button onClick={() => setPreviewUrl(null)} className={`p-3 rounded-full shadow-2xl transition-all ${isLightColor(s.theme.bgColor) ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/10 hover:bg-black/20 text-black'}`}><X className="w-6 h-6" /></button>
           </div>
           <div className="w-full h-full flex items-center justify-center overflow-auto mt-12 scrollbar-hide">
-             <img src={previewUrl} className="max-w-none shadow-[0_0_80px_rgba(0,0,0,0.5)] border border-white/5" alt="Preview" style={{ zoom: 0.25 }} />
+             <img src={previewUrl} className={`max-w-none shadow-[0_0_80px_rgba(0,0,0,0.5)] border ${isLightColor(s.theme.bgColor) ? 'border-white/5' : 'border-black/5'}`} alt="Preview" style={{ zoom: 0.25 }} />
           </div>
-          <p className="mt-8 text-gray-400 font-medium text-sm">此为 3x 超清预览，下载后将保存为高清 PNG 格式</p>
+          <p className={`mt-8 font-medium text-sm ${isLightColor(s.theme.bgColor) ? 'text-gray-400' : 'text-gray-600'}`}>此为 3x 超清预览，下载后将保存为高清 PNG 格式</p>
         </div>
       )}
 
@@ -137,6 +145,10 @@ function App() {
               <div className="flex justify-between items-center py-1">
                 <span className="text-[13px] font-bold text-gray-100">格子填充</span>
                 <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[13px] font-bold text-gray-100">透明格子底</span>
+                <input type="checkbox" checked={s.theme.boxBgTransparent === true} onChange={(e) => s.setTheme({ boxBgTransparent: e.target.checked })} className="w-4 h-4 cursor-pointer accent-blue-500" />
               </div>
               <div className="flex justify-between items-center py-1">
                 <span className="text-[13px] font-bold text-gray-100">标题加粗 (描边)</span>
@@ -231,7 +243,15 @@ function App() {
       <div className="flex-1 overflow-auto p-12 bg-neutral-800 relative scroll-smooth font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
         {exportMessage && <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[110] bg-blue-600 text-white px-8 py-3 rounded-full animate-bounce flex items-center gap-3 shadow-2xl font-bold"><span>{exportMessage}</span></div>}
         
-        <div className="flex flex-col items-center min-w-max mx-auto">
+        {/* Zoom Controls */}
+        <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
+          <button onClick={() => setZoom(z => Math.min(z + 0.1, 2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
+          <div className="text-center text-xs font-bold text-gray-400 py-1">{Math.round(zoom * 100)}%</div>
+          <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
+          <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="重置大小"><RotateCcw className="w-5 h-5" /></button>
+        </div>
+
+        <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500" style={{ backgroundColor: s.theme.bgColor, color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
             <div className="flex flex-col items-center text-center">
               <div className="relative w-full group/label">
@@ -267,7 +287,7 @@ function App() {
                             <button onClick={() => s.updateItem(row.id, item.id, { textOffsetY: (item.textOffsetY || 0) + 4 })} className="text-gray-400 hover:text-white"><ArrowDown className="w-4 h-4" /></button>
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
-                          <div className="w-full relative shadow-lg transition-all duration-300" style={{ height: `${fixedHeight}px`, border: s.theme.borderWidth > 0 ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: s.theme.boxBgColor }}><textarea className="w-full h-full p-4 bg-transparent outline-none resize-none" style={{ fontFamily: 'var(--oc-font)', color: '#111827' }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} /></div>
+                          <div className="w-full relative shadow-lg transition-all duration-300" style={{ height: `${fixedHeight}px`, border: s.theme.borderWidth > 0 ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: s.theme.boxBgTransparent ? 'transparent' : s.theme.boxBgColor }}><textarea className="w-full h-full p-4 bg-transparent outline-none resize-none" style={{ fontFamily: 'var(--oc-font)', color: '#111827' }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} /></div>
                           <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${(item.textOffsetY || 0) + s.theme.textMarginTop}px`, gap: `${s.theme.titleSubtitleGap}px` }}>
                             <div className="relative w-full group/label">
                               <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">

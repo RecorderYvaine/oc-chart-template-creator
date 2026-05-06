@@ -38,6 +38,7 @@ interface AppState {
     borderWidth: number;
     boxAspectRatio: string;
     boxBgColor: string;
+    boxBgTransparent: boolean;
     fontFamily: string;
     isDistressed: boolean;
     boxBaseWidth: number;
@@ -98,6 +99,7 @@ export const useStore = create<AppState>()((set) => ({
     borderWidth: 2,
     boxAspectRatio: '3/4',
     boxBgColor: '#ffffff',
+    boxBgTransparent: false,
     fontFamily: '"Noto Serif SC", serif',
     isDistressed: false,
     boxBaseWidth: 240,
