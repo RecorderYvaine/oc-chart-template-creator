@@ -19,7 +19,7 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState('');
-  const [isFontLoading, setIsFontLoading] = useState(true);
+  const [isFontLoading, setIsFontLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
 
   // Trackpad / Mouse wheel zoom support
@@ -37,13 +37,25 @@ function App() {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
+  // Dynamic font loading detection
+  useEffect(() => {
+    if (!s.theme) return;
+    const isCustom = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
+    if (isCustom) {
+      setIsFontLoading(true);
+      const fontName = s.theme.fontFamily.includes('Qiji') ? 'QijiCombo' : 'HuiwenMincho';
+      document.fonts.load(`1em "${fontName}"`).then(() => {
+        setIsFontLoading(false);
+      }).catch(() => setIsFontLoading(false));
+    } else {
+      setIsFontLoading(false);
+    }
+  }, [s.theme.fontFamily]);
+
   // Preload font immediately on mount in the background
   useEffect(() => {
-    document.fonts.load('1em "QijiCombo"').then(() => {
-      setIsFontLoading(false);
-    }).catch(() => {
-      setIsFontLoading(false);
-    });
+    document.fonts.load('1em "QijiCombo"').catch(() => {});
+    document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -57,7 +69,7 @@ function App() {
     if (s.theme.fontFamily) {
       const family = s.theme.fontFamily.split('|')[0];
       r.style.setProperty('--oc-font', family);
-      r.style.setProperty('--oc-font-weight', s.theme.fontFamily.includes('Qiji') ? 'normal' : 'bold');
+      r.style.setProperty('--oc-font-weight', (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? 'normal' : 'bold');
     }
   }, [s.theme]);
 
@@ -153,7 +165,7 @@ function App() {
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
                 </div>
-                {s.theme.fontFamily.includes('Qiji') && isFontLoading && (
+                {(s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) && isFontLoading && (
                   <div className="text-[11px] text-gray-400 flex items-start gap-1.5 px-1 animate-pulse mt-1">
                     <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5 text-blue-400" />
                     <span>该字体加载较慢，请耐心等待一段时间，加载完成后会自动显示。</span>
@@ -284,7 +296,7 @@ function App() {
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value, borderColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && s.theme.fontFamily.includes('Qiji') ? '1px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
+                 <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '1px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
               </div>
               <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
               <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.subtitleSize}px`, fontWeight: 'normal' }}>
@@ -321,7 +333,7 @@ function App() {
                                  <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                  <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                               </div>
-                              <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && s.theme.fontFamily.includes('Qiji') ? '0.5px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
+                              <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.5px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
                             </div>
                             {item.showSubtitle !== false && (
                               <div className="relative w-full group/label">

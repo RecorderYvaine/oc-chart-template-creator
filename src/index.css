@@ -8,6 +8,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'HuiwenMincho';
+  src: url('/huiwen-mincho.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-oc-bg: var(--oc-bg, #111111);
   --color-oc-text: var(--oc-text, #ffffff);
