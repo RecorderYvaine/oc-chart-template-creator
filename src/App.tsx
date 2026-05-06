@@ -77,24 +77,25 @@ function App() {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); setExportMessage('正在渲染高清预览图...');
     
-    // Temporarily reset zoom to 1 to prevent capture clipping/rendering issues
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
 
     try {
       await document.fonts.ready;
-      if (zoom !== 1) await new Promise(r => setTimeout(r, 300)); // Wait for zoom CSS transition
+      if (zoom !== 1) await new Promise(r => setTimeout(r, 400));
       
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
+      
       await new Promise(r => setTimeout(r, 600));
       const dataUrl = await domToPng(original, { 
         scale: 3, 
-        backgroundColor: s.theme.bgColor,
+        backgroundColor: 'rgba(0,0,0,0)', // Always transparent background to allow holes
         width: original.offsetWidth,
         height: original.offsetHeight
       });
+
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
       setPreviewUrl(dataUrl);
     } catch (err: any) { alert(`预览生成失败: ${err.message}`); } finally { 
@@ -291,8 +292,11 @@ function App() {
         </div>
 
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
-          <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500" style={{ backgroundColor: s.theme.bgColor, color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
-            <div className="flex flex-col items-center text-center">
+          <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
+            {/* Background Sheet - The color to be punched through */}
+            <div className="absolute inset-0 z-0 pointer-events-none" style={{ backgroundColor: s.theme.bgColor }} />
+            
+            <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value, borderColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
@@ -327,8 +331,11 @@ function App() {
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
                           <div className={`w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: s.theme.borderWidth > 0 ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.boxBgColor }}>
-                            <textarea className="w-full h-full p-4 bg-transparent outline-none resize-none" style={{ fontFamily: 'var(--oc-font)', color: s.theme.isTransparentBg ? s.theme.textColor : '#111827' }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} />
-                          </div>
+                          {s.theme.isTransparentBg && (
+                            <div style={{ position: 'absolute', inset: -1, backgroundColor: 'black', mixBlendMode: 'destination-out' as any, zIndex: -1 }} />
+                          )}
+                          <textarea className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.isTransparentBg ? s.theme.textColor : '#111827' }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} />
+                        </div>
                           <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${(item.textOffsetY || 0) + s.theme.textMarginTop}px`, gap: `${s.theme.titleSubtitleGap}px` }}>
                             <div className="relative w-full group/label">
                               <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
