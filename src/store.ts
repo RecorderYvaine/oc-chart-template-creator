@@ -98,7 +98,7 @@ export const useStore = create<AppState>()((set) => ({
     borderWidth: 2,
     boxAspectRatio: '3/4',
     boxBgColor: '#ffffff',
-    fontFamily: '"QijiCombo", serif',
+    fontFamily: '"Noto Serif SC", serif',
     isDistressed: false,
     boxBaseWidth: 240,
     baseTitleSize: 30,
