@@ -9,16 +9,19 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState('');
-  const [isFontLoading, setIsFontLoading] = useState(true);
+  const [isFontLoading, setIsFontLoading] = useState(false);
 
-  // Preload font immediately on mount in the background
   useEffect(() => {
-    document.fonts.load('1em "QijiCombo"').then(() => {
+    if (!s.theme) return;
+    if (s.theme.fontFamily.includes('Qiji')) {
+      setIsFontLoading(true);
+      document.fonts.load('1em "QijiCombo"').then(() => {
+        setIsFontLoading(false);
+      }).catch(() => setIsFontLoading(false));
+    } else {
       setIsFontLoading(false);
-    }).catch(() => {
-      setIsFontLoading(false);
-    });
-  }, []);
+    }
+  }, [s.theme.fontFamily]);
 
   useEffect(() => {
     if (!s.theme) return;
