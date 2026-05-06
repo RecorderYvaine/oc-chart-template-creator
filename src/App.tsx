@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { useStore } from './store';
 import { Plus, Trash2, Eye, EyeOff, Palette, Columns, Layers, Loader2, ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, X, Search, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { domToPng } from 'modern-screenshot';
@@ -12,6 +12,66 @@ const isLightColor = (color: string) => {
   const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
   return brightness > 155;
 };
+
+// Component to render the background sheet with physical holes
+function PunchHoleBackground({ containerRef, bgColor, isTransparent, gridGap, rowGap }: { 
+  containerRef: React.RefObject<HTMLDivElement | null>, 
+  bgColor: string, 
+  isTransparent: boolean,
+  gridGap: number,
+  rowGap: number
+}) {
+  const [holes, setHoles] = useState<{x: number, y: number, w: number, h: number}[]>([]);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+
+      if (!isTransparent) {
+        setHoles([]);
+        return;
+      }
+
+      const boxEls = containerRef.current.querySelectorAll('.grid-box-inner');
+      const newHoles: {x: number, y: number, w: number, h: number}[] = [];
+      boxEls.forEach(el => {
+        const bRect = el.getBoundingClientRect();
+        newHoles.push({
+          x: bRect.left - rect.left,
+          y: bRect.top - rect.top,
+          w: bRect.width,
+          h: bRect.height
+        });
+      });
+      setHoles(newHoles);
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    if (containerRef.current) observer.observe(containerRef.current);
+    // Also watch for scroll/changes
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [containerRef, isTransparent, gridGap, rowGap]);
+
+  return (
+    <svg className="absolute inset-0 z-0 pointer-events-none w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <mask id="punch-hole-mask">
+          <rect width="100%" height="100%" fill="white" />
+          {holes.map((h, i) => (
+            <rect key={i} x={h.x} y={h.y} width={h.w} height={h.h} fill="black" />
+          ))}
+        </mask>
+      </defs>
+      <rect width="100%" height="100%" fill={bgColor} mask={isTransparent ? "url(#punch-hole-mask)" : undefined} />
+    </svg>
+  );
+}
 
 function App() {
   const s = useStore();
@@ -37,26 +97,24 @@ function App() {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Dynamic font loading detection
+  // Preload fonts
+  useEffect(() => {
+    document.fonts.load('1em "QijiCombo"').catch(() => {});
+    document.fonts.load('1em "HuiwenMincho"').catch(() => {});
+  }, []);
+
+  // Monitor loading status
   useEffect(() => {
     if (!s.theme) return;
     const isCustom = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
     if (isCustom) {
       setIsFontLoading(true);
-      const fontName = s.theme.fontFamily.includes('Qiji') ? 'QijiCombo' : 'HuiwenMincho';
-      document.fonts.load(`1em "${fontName}"`).then(() => {
-        setIsFontLoading(false);
-      }).catch(() => setIsFontLoading(false));
+      const name = s.theme.fontFamily.includes('Qiji') ? 'QijiCombo' : 'HuiwenMincho';
+      document.fonts.load(`1em "${name}"`).then(() => setIsFontLoading(false)).catch(() => setIsFontLoading(false));
     } else {
       setIsFontLoading(false);
     }
   }, [s.theme.fontFamily]);
-
-  // Preload font immediately on mount in the background
-  useEffect(() => {
-    document.fonts.load('1em "QijiCombo"').catch(() => {});
-    document.fonts.load('1em "HuiwenMincho"').catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!s.theme) return;
@@ -75,7 +133,7 @@ function App() {
 
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
-    setIsGenerating(true); setExportMessage('正在渲染高清预览图...');
+    setIsGenerating(true); setExportMessage('正在准备超清预览...');
     
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
@@ -88,10 +146,10 @@ function App() {
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 800));
       const dataUrl = await domToPng(original, { 
         scale: 3, 
-        backgroundColor: 'rgba(0,0,0,0)', // Always transparent background to allow holes
+        backgroundColor: 'rgba(0,0,0,0)', 
         width: original.offsetWidth,
         height: original.offsetHeight
       });
@@ -155,7 +213,7 @@ function App() {
         <div className="space-y-6">
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 样式与字体</h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex flex-col gap-3 pt-1">
                 <label className="text-[13px] font-bold text-gray-100 uppercase px-0.5">全局字体选择</label>
                 <div className="relative group/select">
@@ -175,11 +233,11 @@ function App() {
                 )}
               </div>
               <div className="flex justify-between items-center py-1">
-                <span className="text-[13px] font-bold text-gray-200">背景颜色</span>
+                <span className="text-[13px] font-bold text-gray-100">背景颜色</span>
                 <input type="color" value={s.theme.bgColor} onChange={(e) => s.setTheme({ bgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
               </div>
               <div className="flex justify-between items-center py-1">
-                <span className="text-[13px] font-bold text-gray-200">文字颜色</span>
+                <span className="text-[13px] font-bold text-gray-100">文字颜色</span>
                 <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value, borderColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
               </div>
               <div className="flex justify-between items-center py-1">
@@ -263,7 +321,7 @@ function App() {
                 { label: '画布总宽', key: 'containerWidth', min: 400, max: 3500, global: true }
               ].map(item => (
                 <div key={item.key} className="space-y-0.5 py-1">
-                  <div className="flex justify-between font-bold text-gray-100 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{item.global ? (s as any)[item.key] : (s.theme as any)[item.key]}px</span></div>
+                  <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{item.global ? (s as any)[item.key] : (s.theme as any)[item.key]}px</span></div>
                   <div className="flex items-center gap-3">
                     <input type="range" min={item.min} max={item.max} value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
                     <input type="number" value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[12px] font-bold text-gray-100" />
@@ -285,7 +343,7 @@ function App() {
         
         {/* Zoom Controls */}
         <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
-          <button onClick={() => setZoom(z => Math.min(z + 0.1, 2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
+          <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
           <div className="text-center text-xs font-bold text-gray-400 py-1">{Math.round(zoom * 100)}%</div>
           <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="重置大小"><RotateCcw className="w-5 h-5" /></button>
@@ -294,7 +352,7 @@ function App() {
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
             {/* Background Sheet - The color to be punched through */}
-            <div className="absolute inset-0 z-0 pointer-events-none" style={{ backgroundColor: s.theme.bgColor }} />
+            <PunchHoleBackground containerRef={canvasRef} bgColor={s.theme.bgColor} isTransparent={s.theme.isTransparentBg} gridGap={s.gridGap} rowGap={s.rowGap} />
             
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
@@ -310,7 +368,7 @@ function App() {
               </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
-            <div className="flex flex-col items-center" style={{ gap: `${s.rowGap}px`, width: '100%' }}>
+            <div className="relative z-10 flex flex-col items-center" style={{ gap: `${s.rowGap}px`, width: '100%' }}>
               <div className="flex flex-col" style={{ width: `${naturalTableWidth}px`, gap: `${s.rowGap}px` }}>
                 {s.rows.map((row) => (
                   <div key={row.id} className="flex relative group/row justify-center" style={{ gap: `${s.gridGap}px`, width: '100%' }}>
@@ -330,12 +388,9 @@ function App() {
                             <button onClick={() => s.updateItem(row.id, item.id, { textOffsetY: (item.textOffsetY || 0) + 4 })} className="text-gray-400 hover:text-white"><ArrowDown className="w-4 h-4" /></button>
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
-                          <div className={`w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: s.theme.borderWidth > 0 ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.boxBgColor }}>
-                          {s.theme.isTransparentBg && (
-                            <div style={{ position: 'absolute', inset: -1, backgroundColor: 'black', mixBlendMode: 'destination-out' as any, zIndex: -1 }} />
-                          )}
-                          <textarea className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.isTransparentBg ? s.theme.textColor : '#111827' }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} />
-                        </div>
+                          <div className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: s.theme.borderWidth > 0 ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.boxBgColor }}>
+                            <textarea className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.isTransparentBg ? s.theme.textColor : '#111827' }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} />
+                          </div>
                           <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${(item.textOffsetY || 0) + s.theme.textMarginTop}px`, gap: `${s.theme.titleSubtitleGap}px` }}>
                             <div className="relative w-full group/label">
                               <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
@@ -361,7 +416,7 @@ function App() {
                                    <input type="color" value={line.color || s.theme.textColor} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { color: e.target.value })} className="w-3 h-3 p-0 border-0 bg-transparent cursor-pointer" />
                                    <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) + 2 })} className="text-[10px] text-blue-500 font-bold">+</button>
                                    <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
-                                   <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
+                                   <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1"><Trash2 className="w-3 h-3" /></button>
                                 </div>
                                 <textarea className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onInput={hAR} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} placeholder={`描述行 ${lineIndex + 1}`} />
                               </div>
