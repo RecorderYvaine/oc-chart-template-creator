@@ -5,6 +5,8 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 export interface TextLine {
   id: string;
   text: string;
+  color?: string;
+  fontSize?: number;
 }
 
 export interface GridItem {
@@ -25,6 +27,7 @@ export interface GridItem {
 export interface RowData {
   id: string;
   items: GridItem[];
+  fillWidth?: boolean;
 }
 
 interface AppState {
@@ -40,10 +43,13 @@ interface AppState {
     boxBaseWidth: number;
     baseTitleSize: number;
     baseSubtitleSize: number;
+    baseExtraLineSize: number;
     titleSize: number;
     subtitleSize: number;
     textMarginTop: number;
     titleSubtitleGap: number;
+    titleAuthorGap: number;
+    authorGridGap: number;
   };
   title: string;
   author: string;
@@ -61,12 +67,16 @@ interface AppState {
   setContainerWidth: (width: number) => void;
   addRow: () => void;
   removeRow: (rowId: string) => void;
+  toggleRowFillWidth: (rowId: string) => void;
   addItemToRow: (rowId: string) => void;
   removeItemFromRow: (rowId: string, itemId: string) => void;
   updateItem: (rowId: string, itemId: string, data: Partial<GridItem>) => void;
   addExtraLine: (rowId: string, itemId: string) => void;
+  addExtraLineToAll: () => void;
   removeExtraLine: (rowId: string, itemId: string, lineId: string) => void;
-  updateExtraLine: (rowId: string, itemId: string, lineId: string, text: string) => void;
+  removeExtraLineIndexFromAll: (index: number) => void;
+  updateExtraLine: (rowId: string, itemId: string, lineId: string, data: Partial<TextLine>) => void;
+  updateExtraLineSizeGlobal: (index: number, size: number) => void;
 }
 
 const createEmptyItem = (): GridItem => ({
@@ -92,10 +102,13 @@ export const useStore = create<AppState>()((set) => ({
     boxBaseWidth: 240,
     baseTitleSize: 30,
     baseSubtitleSize: 18,
+    baseExtraLineSize: 14,
     titleSize: 60,
     subtitleSize: 22,
     textMarginTop: 8,
-    titleSubtitleGap: 0,
+    titleSubtitleGap: 4,
+    titleAuthorGap: 24,
+    authorGridGap: 48,
   },
   title: '大标题',
   author: '制表人：',
@@ -110,15 +123,8 @@ export const useStore = create<AppState>()((set) => ({
         { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
         { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
         { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-      ]
-    },
-    {
-      id: generateId(),
-      items: [
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-      ]
+      ],
+      fillWidth: false,
     }
   ],
   setTheme: (themeUpdate) =>
@@ -130,12 +136,21 @@ export const useStore = create<AppState>()((set) => ({
   setRowGap: (rowGap) => set({ rowGap }),
   setContainerWidth: (containerWidth) => set({ containerWidth }),
   addRow: () =>
-    set((state) => ({
-      rows: [...state.rows, { id: generateId(), items: [createEmptyItem()] }],
-    })),
+    set((state) => {
+      const lastRow = state.rows[state.rows.length - 1];
+      const itemCount = lastRow ? lastRow.items.length : 1;
+      const newItems = Array.from({ length: itemCount }, () => createEmptyItem());
+      return {
+        rows: [...state.rows, { id: generateId(), items: newItems, fillWidth: lastRow?.fillWidth || false }],
+      };
+    }),
   removeRow: (rowId) =>
     set((state) => ({
       rows: state.rows.filter((r) => r.id !== rowId),
+    })),
+  toggleRowFillWidth: (rowId) =>
+    set((state) => ({
+      rows: state.rows.map((r) => r.id === rowId ? { ...r, fillWidth: !r.fillWidth } : r),
     })),
   addItemToRow: (rowId) =>
     set((state) => ({
@@ -175,6 +190,16 @@ export const useStore = create<AppState>()((set) => ({
           : r
       ),
     })),
+  addExtraLineToAll: () =>
+    set((state) => ({
+      rows: state.rows.map((r) => ({
+        ...r,
+        items: r.items.map((i) => ({
+          ...i,
+          extraLines: [...(i.extraLines || []), { id: generateId(), text: '统一描述', fontSize: state.theme.baseExtraLineSize }],
+        })),
+      })),
+    })),
   removeExtraLine: (rowId, itemId, lineId) =>
     set((state) => ({
       rows: state.rows.map((r) =>
@@ -190,7 +215,17 @@ export const useStore = create<AppState>()((set) => ({
           : r
       ),
     })),
-  updateExtraLine: (rowId, itemId, lineId, text) =>
+  removeExtraLineIndexFromAll: (index) =>
+    set((state) => ({
+      rows: state.rows.map((r) => ({
+        ...r,
+        items: r.items.map((i) => ({
+          ...i,
+          extraLines: (i.extraLines || []).filter((_, idx) => idx !== index),
+        })),
+      })),
+    })),
+  updateExtraLine: (rowId, itemId, lineId, data) =>
     set((state) => ({
       rows: state.rows.map((r) =>
         r.id === rowId
@@ -200,12 +235,22 @@ export const useStore = create<AppState>()((set) => ({
                 i.id === itemId
                   ? {
                       ...i,
-                      extraLines: (i.extraLines || []).map(l => l.id === lineId ? { ...l, text } : l),
+                      extraLines: (i.extraLines || []).map(l => l.id === lineId ? { ...l, ...data } : l),
                     }
                   : i
               ),
             }
           : r
       ),
+    })),
+  updateExtraLineSizeGlobal: (index, size) =>
+    set((state) => ({
+      rows: state.rows.map((r) => ({
+        ...r,
+        items: r.items.map((i) => ({
+          ...i,
+          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, fontSize: size } : l),
+        })),
+      })),
     })),
 }));
