@@ -22,6 +22,21 @@ function App() {
   const [isFontLoading, setIsFontLoading] = useState(true);
   const [zoom, setZoom] = useState(1);
 
+  // Trackpad / Mouse wheel zoom support
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setZoom(z => {
+          const newZoom = z - e.deltaY * 0.01;
+          return Math.min(Math.max(newZoom, 0.2), 3);
+        });
+      }
+    };
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
+
   // Preload font immediately on mount in the background
   useEffect(() => {
     document.fonts.load('1em "QijiCombo"').then(() => {
@@ -49,12 +64,19 @@ function App() {
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); setExportMessage('正在渲染高清预览图...');
+    
+    // Temporarily reset zoom to 1 to prevent capture clipping/rendering issues
+    const currentZoom = zoom;
+    if (zoom !== 1) setZoom(1);
+
     try {
       await document.fonts.ready;
+      if (zoom !== 1) await new Promise(r => setTimeout(r, 300)); // Wait for zoom CSS transition
+      
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 600));
       const dataUrl = await domToPng(original, { 
         scale: 3, 
         backgroundColor: s.theme.bgColor,
@@ -63,7 +85,11 @@ function App() {
       });
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
       setPreviewUrl(dataUrl);
-    } catch (err: any) { alert(`预览生成失败: ${err.message}`); } finally { setIsGenerating(false); setExportMessage(''); }
+    } catch (err: any) { alert(`预览生成失败: ${err.message}`); } finally { 
+      if (zoom !== 1) setZoom(currentZoom);
+      setIsGenerating(false); 
+      setExportMessage(''); 
+    }
   };
 
   const handleDownload = () => {
