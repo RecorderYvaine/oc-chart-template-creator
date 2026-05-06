@@ -122,7 +122,7 @@ function App() {
                 {s.theme.fontFamily.includes('Qiji') && isFontLoading && (
                   <div className="text-[11px] text-gray-400 flex items-start gap-1.5 px-1 animate-pulse mt-1">
                     <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5 text-blue-400" />
-                    <span>该字体加载较慢，请耐心等待几秒钟，加载完成后会自动显示。</span>
+                    <span>该字体加载较慢，请耐心等待一段时间，加载完成后会自动显示。</span>
                   </div>
                 )}
               </div>
