@@ -21,7 +21,7 @@ function App() {
     if (s.theme.fontFamily) {
       const family = s.theme.fontFamily.split('|')[0];
       r.style.setProperty('--oc-font', family);
-      r.style.setProperty('--oc-font-weight', s.theme.fontFamily.includes('|900') ? '900' : 'bold');
+      r.style.setProperty('--oc-font-weight', s.theme.fontFamily.includes('Qiji') ? 'normal' : 'bold');
     }
   }, [s.theme]);
 

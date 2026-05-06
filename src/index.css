@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: 'QijiCombo';
-  src: url('/qiji-combo.woff2?v=2') format('woff2');
+  src: url('https://raw.githubusercontent.com/RecorderYvaine/oc-chart-template-creator/274266c/public/qiji-combo.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
