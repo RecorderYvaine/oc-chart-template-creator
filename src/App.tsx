@@ -9,6 +9,19 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState('');
+  const [isFontLoading, setIsFontLoading] = useState(false);
+
+  useEffect(() => {
+    if (!s.theme) return;
+    if (s.theme.fontFamily.includes('Qiji')) {
+      setIsFontLoading(true);
+      document.fonts.load('1em "QijiCombo"').then(() => {
+        setIsFontLoading(false);
+      }).catch(() => setIsFontLoading(false));
+    } else {
+      setIsFontLoading(false);
+    }
+  }, [s.theme.fontFamily]);
 
   useEffect(() => {
     if (!s.theme) return;
@@ -106,6 +119,12 @@ function App() {
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
                 </div>
+                {s.theme.fontFamily.includes('Qiji') && isFontLoading && (
+                  <div className="text-[11px] text-gray-400 flex items-start gap-1.5 px-1 animate-pulse mt-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5 text-blue-400" />
+                    <span>该字体加载较慢，请耐心等待几秒钟，加载完成后会自动显示。</span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between items-center py-1">
                 <span className="text-[13px] font-bold text-gray-200">背景颜色</span>
