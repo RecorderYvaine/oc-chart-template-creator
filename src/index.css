@@ -10,7 +10,7 @@
 
 @font-face {
   font-family: 'HuiwenMincho';
-  src: url('/huiwen-mincho.otf') format('opentype');
+  src: url('/huiwen-mincho.otf');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

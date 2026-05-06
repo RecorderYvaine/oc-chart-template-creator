@@ -159,8 +159,9 @@ function App() {
                 <label className="text-[13px] font-bold text-gray-100 uppercase px-0.5">全局字体选择</label>
                 <div className="relative group/select">
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
+                    <option value='"Noto Serif SC", serif'>思源宋体 (默认)</option>
+                    <option value='"HuiwenMincho", serif'>汇文明朝体 (新)</option>
                     <option value='"QijiCombo", serif'>齐伋体 (Qiji-Combo)</option>
-                    <option value='"Noto Serif SC", serif'>思源宋体</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
