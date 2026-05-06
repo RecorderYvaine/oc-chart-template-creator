@@ -50,6 +50,7 @@ interface AppState {
     titleSubtitleGap: number;
     titleAuthorGap: number;
     authorGridGap: number;
+    titleBold: boolean;
   };
   title: string;
   author: string;
@@ -109,6 +110,7 @@ export const useStore = create<AppState>()((set) => ({
     titleSubtitleGap: 4,
     titleAuthorGap: 24,
     authorGridGap: 48,
+    titleBold: true,
   },
   title: '大标题',
   author: '制表人：',
