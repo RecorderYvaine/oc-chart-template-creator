@@ -8,6 +8,7 @@ export interface TextLine {
   color?: string;
   fontSize?: number;
   hidden?: boolean;
+  spacing?: number;
 }
 
 export interface GridItem {
@@ -19,6 +20,8 @@ export interface GridItem {
   subtitleColor?: string;
   titleSize?: number;
   subtitleSize?: number;
+  titleSpacing?: number;
+  subtitleSpacing?: number;
   textOffsetY?: number;
   flexGrow?: boolean;
   extraLines?: TextLine[];
@@ -50,10 +53,11 @@ interface AppState {
     baseTitleSize: number;
     baseSubtitleSize: number;
     baseExtraLineSize: number;
+    baseTitleSpacing: number;
+    baseSubtitleSpacing: number;
+    baseExtraLineSpacing: number;
     titleSize: number;
     subtitleSize: number;
-    textMarginTop: number;
-    titleSubtitleGap: number;
     titleAuthorGap: number;
     authorGridGap: number;
     titleBold: boolean;
@@ -85,11 +89,14 @@ interface AppState {
   updateExtraLine: (rowId: string, itemId: string, lineId: string, data: Partial<TextLine>) => void;
   updateExtraLineSizeGlobal: (index: number, size: number) => void;
   updateExtraLineColorGlobal: (index: number, color: string) => void;
+  updateExtraLineSpacingGlobal: (index: number, spacing: number) => void;
   toggleExtraLineVisibilityGlobal: (index: number) => void;
   updateGridTitleSizeGlobal: (size: number) => void;
   updateGridSubtitleSizeGlobal: (size: number) => void;
   updateGridTitleColorGlobal: (color: string) => void;
   updateGridSubtitleColorGlobal: (color: string) => void;
+  updateGridTitleSpacingGlobal: (spacing: number) => void;
+  updateGridSubtitleSpacingGlobal: (spacing: number) => void;
 }
 
 const createEmptyItem = (): GridItem => ({
@@ -122,10 +129,11 @@ export const useStore = create<AppState>()((set) => ({
     baseTitleSize: 30,
     baseSubtitleSize: 18,
     baseExtraLineSize: 14,
+    baseTitleSpacing: 8,
+    baseSubtitleSpacing: 4,
+    baseExtraLineSpacing: 4,
     titleSize: 60,
     subtitleSize: 22,
-    textMarginTop: 8,
-    titleSubtitleGap: 4,
     titleAuthorGap: 24,
     authorGridGap: 48,
     titleBold: true,
@@ -216,7 +224,7 @@ export const useStore = create<AppState>()((set) => ({
         ...r,
         items: r.items.map((i) => ({
           ...i,
-          extraLines: [...(i.extraLines || []), { id: generateId(), text: '统一描述', fontSize: state.theme.baseExtraLineSize }],
+          extraLines: [...(i.extraLines || []), { id: generateId(), text: '统一描述', fontSize: state.theme.baseExtraLineSize, spacing: state.theme.baseExtraLineSpacing }],
         })),
       })),
     })),
@@ -285,6 +293,16 @@ export const useStore = create<AppState>()((set) => ({
         })),
       })),
     })),
+  updateExtraLineSpacingGlobal: (index, spacing) =>
+    set((state) => ({
+      rows: state.rows.map((r) => ({
+        ...r,
+        items: r.items.map((i) => ({
+          ...i,
+          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, spacing: spacing } : l),
+        })),
+      })),
+    })),
   toggleExtraLineVisibilityGlobal: (index) =>
     set((state) => ({
       rows: state.rows.map((r) => ({
@@ -323,6 +341,22 @@ export const useStore = create<AppState>()((set) => ({
       rows: state.rows.map(r => ({
         ...r,
         items: r.items.map(i => ({ ...i, subtitleColor: color }))
+      }))
+    })),
+  updateGridTitleSpacingGlobal: (spacing) =>
+    set((state) => ({
+      theme: { ...state.theme, baseTitleSpacing: spacing },
+      rows: state.rows.map(r => ({
+        ...r,
+        items: r.items.map(i => ({ ...i, titleSpacing: spacing }))
+      }))
+    })),
+  updateGridSubtitleSpacingGlobal: (spacing) =>
+    set((state) => ({
+      theme: { ...state.theme, baseSubtitleSpacing: spacing },
+      rows: state.rows.map(r => ({
+        ...r,
+        items: r.items.map(i => ({ ...i, subtitleSpacing: spacing }))
       }))
     })),
 }));
