@@ -157,69 +157,77 @@ function App() {
       // 1. Initialize vector fonts first
       await initVectorFonts();
       
-      // 2. Wait for layout to settle
-      await new Promise(r => setTimeout(r, 400));
+      // 2. Wait for layout to settle after zoom change
+      await new Promise(r => setTimeout(r, 600));
 
-      const original = canvasRef.current;
+      const canvas = canvasRef.current;
       
       // 3. Hide all .no-export elements
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      // 4. Vectorize In-Place
-      const textElements = original.querySelectorAll('textarea, input');
-      const replacements: { original: Element, parent: ParentNode | null, nextSibling: ChildNode | null, svg: HTMLElement }[] = [];
+      // 4. Vectorize In-Place with Overlays
+      const textElements = canvas.querySelectorAll('textarea, input');
+      const overlays: HTMLElement[] = [];
+      const hiddenElements: { el: HTMLElement, originalOpacity: string }[] = [];
 
       for (let i = 0; i < textElements.length; i++) {
         const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
+        const text = el.value || el.placeholder || "";
+        if (!text) continue;
+
         const style = window.getComputedStyle(el);
         const fontSize = parseFloat(style.fontSize);
         const color = style.color;
         const textAlign = (style.textAlign || 'center') as 'left' | 'center';
         const width = el.offsetWidth;
         const padding = style.padding;
-        const text = el.value || (el as HTMLInputElement).placeholder || "";
 
-        if (text) {
-          const svgString = generateTextSVG(text, fontSize, width, color, textAlign);
-          const wrapper = document.createElement('div');
-          wrapper.innerHTML = svgString.trim();
-          wrapper.style.display = 'flex';
-          wrapper.style.justifyContent = (textAlign === 'center') ? 'center' : 'flex-start';
-          wrapper.style.alignItems = 'center';
-          wrapper.style.width = '100%';
-          wrapper.style.height = '100%';
-          wrapper.style.padding = padding;
-          wrapper.style.pointerEvents = 'none';
-          wrapper.style.boxSizing = 'border-box';
-          wrapper.style.overflow = 'visible';
-
-          replacements.push({
-            original: el,
-            parent: el.parentNode,
-            nextSibling: el.nextSibling,
-            svg: wrapper
-          });
+        // Calculate absolute position relative to canvas
+        let left = 0;
+        let top = 0;
+        let curr: HTMLElement | null = el;
+        while (curr && curr !== canvas) {
+          left += curr.offsetLeft;
+          top += curr.offsetTop;
+          curr = curr.offsetParent as HTMLElement;
         }
+
+        const svgString = generateTextSVG(text, fontSize, width, color, textAlign);
+        const overlay = document.createElement('div');
+        overlay.innerHTML = svgString.trim();
+        overlay.style.position = 'absolute';
+        overlay.style.left = `${left}px`;
+        overlay.style.top = `${top}px`;
+        overlay.style.width = `${el.offsetWidth}px`;
+        overlay.style.height = `${el.offsetHeight}px`;
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = (textAlign === 'center') ? 'center' : 'flex-start';
+        overlay.style.alignItems = 'center';
+        overlay.style.padding = padding;
+        overlay.style.pointerEvents = 'none';
+        overlay.style.boxSizing = 'border-box';
+        overlay.style.zIndex = '100';
+        overlay.style.overflow = 'visible';
+
+        canvas.appendChild(overlay);
+        overlays.push(overlay);
+        
+        hiddenElements.push({ el, originalOpacity: el.style.opacity });
+        el.style.opacity = '0';
       }
 
-      // Temporarily swap
-      replacements.forEach(r => {
-        r.parent?.replaceChild(r.svg, r.original);
-      });
-
-      // 5. Capture REAL canvas node
-      const dataUrl = await toPng(original, { 
+      // 5. Capture canvas node
+      const dataUrl = await toPng(canvas, { 
         quality: 1, 
         pixelRatio: 3, 
         skipFonts: true, 
         backgroundColor: 'transparent',
       });
 
-      // 6. Revert
-      replacements.forEach(r => {
-        r.parent?.replaceChild(r.original, r.svg);
-      });
+      // 6. Cleanup: Remove overlays and restore opacity
+      overlays.forEach(o => canvas.removeChild(o));
+      hiddenElements.forEach(item => item.el.style.opacity = item.originalOpacity);
 
       // 7. Restore .no-export
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
@@ -244,17 +252,19 @@ function App() {
   const maxExtraLines = Math.max(0, ...s.rows.flatMap(r => r.items.map(it => it.extraLines?.length || 0)));
   const extraLineIndices = Array.from({ length: maxExtraLines }, (_, i) => i);
 
+  const previewModalIsLight = isLightColor(s.theme.bgColor);
+
   return (
     <div className="flex h-screen bg-[#111] text-[#eee] overflow-hidden selection:bg-blue-500/30">
       {/* Export Preview Modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
-          <button onClick={() => setPreviewUrl(null)} className="absolute top-8 right-8 text-gray-400 hover:text-white p-2 hover:bg-white/10 rounded-full transition-all"><X className="w-8 h-8" /></button>
+        <div className={`fixed inset-0 z-[100] ${previewModalIsLight ? 'bg-white/95' : 'bg-black/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
+          <button onClick={() => setPreviewUrl(null)} className={`absolute top-8 right-8 ${previewModalIsLight ? 'text-gray-500 hover:text-black hover:bg-black/5' : 'text-gray-400 hover:text-white hover:bg-white/10'} p-2 rounded-full transition-all`}><X className="w-8 h-8" /></button>
           <div className="relative max-w-full max-h-[80vh] group">
-            <img src={previewUrl} className="max-w-full max-h-[80vh] shadow-2xl rounded-sm border border-white/10" alt="Preview" />
+            <img src={previewUrl} className={`max-w-full max-h-[80vh] shadow-2xl rounded-sm border ${previewModalIsLight ? 'border-black/10' : 'border-white/10'}`} alt="Preview" />
             <a href={previewUrl} download={`oc-form-${Date.now()}.png`} className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Download className="w-5 h-5" /> 下载 PNG 图片</a>
           </div>
-          <p className={`mt-24 text-sm font-medium ${isLightColor(s.theme.bgColor) ? 'text-gray-400' : 'text-gray-600'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
+          <p className={`mt-24 text-sm font-medium ${previewModalIsLight ? 'text-gray-500' : 'text-gray-400'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
         </div>
       )}
 
@@ -323,7 +333,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px]">字体调节</div>
+                  <div className="text-[11px] text-blue-300">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -339,7 +349,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px]">字体调节</div>
+                  <div className="text-[11px] text-blue-300">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -356,7 +366,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px]">字体调节</div>
+                  <div className="text-[11px] text-blue-300">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -364,7 +374,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-blue-200">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -379,7 +389,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px]">字体调节</div>
+                  <div className="text-[11px] text-blue-300">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -387,7 +397,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-blue-200">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -403,7 +413,7 @@ function App() {
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-blue-300 text-[11px]">字体调节</div>
+                    <div className="text-[11px] text-blue-300">字体调节</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -411,7 +421,7 @@ function App() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
+                    <div className="text-[13px] font-bold text-blue-200">与上方素材距离</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
