@@ -329,7 +329,6 @@ function App() {
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2">全局大字调节</h2>
             <div className="space-y-6 pt-2">
-              {/* Main Title Row */}
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
                 <div className="space-y-1">
@@ -345,7 +344,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Subtitle Row */}
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
                 <div className="space-y-1">
@@ -544,7 +542,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} placeholder="格子小字" />
+                                <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} placeholder="格子小字" />
                               </div>
                             )}
                             {item.extraLines?.map((line, lineIndex) => {
@@ -557,7 +555,7 @@ function App() {
                                      <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
                                      <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
                                   </div>
-                                  <textarea className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onInput={hAR} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} placeholder={`描述行 ${lineIndex + 1}`} />
+                                  <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onInput={hAR} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} placeholder={`描述行 ${lineIndex + 1}`} />
                                 </div>
                               );
                             })}
