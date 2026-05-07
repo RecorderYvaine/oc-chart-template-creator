@@ -154,90 +154,78 @@ function App() {
     setZoom(1);
 
     try {
-      // Initialize vector fonts first
+      // 1. Initialize vector fonts first
       await initVectorFonts();
       
-      // Small delay for layout to settle after zoom change
+      // 2. Wait for layout to settle
       await new Promise(r => setTimeout(r, 400));
 
       const original = canvasRef.current;
       
-      // Hide no-export elements in original temporarily
+      // 3. Hide all .no-export elements
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      // Clone the node
-      const clone = original.cloneNode(true) as HTMLElement;
-      
-      // Copy essential styles from original to clone to ensure correct rendering
-      const originalStyle = window.getComputedStyle(original);
-      clone.style.cssText = originalStyle.cssText;
-      clone.style.position = 'fixed';
-      clone.style.top = '0';
-      clone.style.left = '0';
-      clone.style.width = original.offsetWidth + 'px';
-      clone.style.height = original.offsetHeight + 'px';
-      clone.style.opacity = '0';
-      clone.style.pointerEvents = 'none';
-      clone.style.zIndex = '-1';
-      
-      document.body.appendChild(clone);
-      
-      // Add a small delay for layout computation
-      await new Promise(r => setTimeout(r, 200));
+      // 4. Vectorize In-Place
+      const textElements = original.querySelectorAll('textarea, input');
+      const replacements: { original: Element, parent: ParentNode | null, nextSibling: ChildNode | null, svg: HTMLElement }[] = [];
 
-      try {
-        // Restore no-export elements in original
-        noExportEls.forEach(el => (el as HTMLElement).style.display = '');
+      for (let i = 0; i < textElements.length; i++) {
+        const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
+        const style = window.getComputedStyle(el);
+        const fontSize = parseFloat(style.fontSize);
+        const color = style.color;
+        const textAlign = (style.textAlign || 'center') as 'left' | 'center';
+        const width = el.offsetWidth;
+        const padding = style.padding;
+        const text = el.value || (el as HTMLInputElement).placeholder || "";
 
-        // Iterate through ORIGINAL elements to get computed styles and apply to CLONE
-        const textElements = original.querySelectorAll('textarea, input');
-        const clonedTextElements = clone.querySelectorAll('textarea, input');
+        if (text) {
+          const svgString = generateTextSVG(text, fontSize, width, color, textAlign);
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = svgString.trim();
+          wrapper.style.display = 'flex';
+          wrapper.style.justifyContent = (textAlign === 'center') ? 'center' : 'flex-start';
+          wrapper.style.alignItems = 'center';
+          wrapper.style.width = '100%';
+          wrapper.style.height = '100%';
+          wrapper.style.padding = padding;
+          wrapper.style.pointerEvents = 'none';
+          wrapper.style.boxSizing = 'border-box';
+          wrapper.style.overflow = 'visible';
 
-        for (let i = 0; i < textElements.length; i++) {
-          const orig = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
-          const clo = clonedTextElements[i] as HTMLElement;
-          
-          const style = window.getComputedStyle(orig);
-          const fontSize = parseFloat(style.fontSize);
-          const color = style.color;
-          const textAlign = (style.textAlign || 'center') as 'left' | 'center';
-          const width = orig.offsetWidth;
-          const padding = style.padding;
-          const text = orig.value || (orig as HTMLInputElement).placeholder || "";
-
-          if (text) {
-            const svgString = generateTextSVG(text, fontSize, width, color, textAlign);
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = svgString.trim();
-            wrapper.style.display = 'flex';
-            wrapper.style.justifyContent = 'center';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.overflow = 'visible';
-            wrapper.style.width = '100%';
-            wrapper.style.height = '100%';
-            wrapper.style.padding = padding;
-            wrapper.style.pointerEvents = 'none';
-            wrapper.style.boxSizing = 'border-box';
-            
-            clo.parentNode?.replaceChild(wrapper, clo);
-          } else {
-            clo.style.visibility = 'hidden';
-          }
+          replacements.push({
+            original: el,
+            parent: el.parentNode,
+            nextSibling: el.nextSibling,
+            svg: wrapper
+          });
         }
-
-        const dataUrl = await toPng(clone, { 
-          quality: 1, 
-          pixelRatio: 3, 
-          skipFonts: true, // Fonts are already vectorized
-          backgroundColor: undefined, // Fix for transparent bg
-        });
-
-        setPreviewUrl(dataUrl);
-        setExportMessage('');
-      } finally {
-        document.body.removeChild(clone);
       }
+
+      // Temporarily swap
+      replacements.forEach(r => {
+        r.parent?.replaceChild(r.svg, r.original);
+      });
+
+      // 5. Capture REAL canvas node
+      const dataUrl = await toPng(original, { 
+        quality: 1, 
+        pixelRatio: 3, 
+        skipFonts: true, 
+        backgroundColor: 'transparent',
+      });
+
+      // 6. Revert
+      replacements.forEach(r => {
+        r.parent?.replaceChild(r.original, r.svg);
+      });
+
+      // 7. Restore .no-export
+      noExportEls.forEach(el => (el as HTMLElement).style.display = '');
+
+      setPreviewUrl(dataUrl);
+      setExportMessage('');
     } catch (err) {
       console.error(err);
       setExportMessage('渲染失败，请重试');

@@ -17,14 +17,15 @@ export async function initVectorFonts() {
 }
 
 function getBestFont(char: string): opentype.Font {
-  if (fontP1?.glyphs.get(fontP1.charToGlyphIndex(char)).unicode !== undefined) return fontP1;
-  if (fontP2?.glyphs.get(fontP2.charToGlyphIndex(char)).unicode !== undefined) return fontP2;
+  const glyphIndex1 = fontP1 ? fontP1.charToGlyphIndex(char) : 0;
+  if (glyphIndex1 > 0) return fontP1!;
+  
+  const glyphIndex2 = fontP2 ? fontP2.charToGlyphIndex(char) : 0;
+  if (glyphIndex2 > 0) return fontP2!;
+  
   return fontHuiwen || fontP1!;
 }
 
-/**
- * Calculates total width of a string for a given font and size.
- */
 function measureWidth(text: string, fontSize: number): number {
   let width = 0;
   for (const char of text) {
@@ -40,7 +41,6 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
   const lines: string[] = [];
   const paragraphs = text.split('\n');
   
-  // Wrap text
   for (const p of paragraphs) {
     let currentLine = "";
     for (const char of p) {
@@ -55,8 +55,8 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     if (currentLine) lines.push(currentLine);
   }
 
-  const totalHeight = lines.length * fontSize * lineHeight;
-  const paths: string[] = [];
+  const totalHeight = Math.max(fontSize * lineHeight, lines.length * fontSize * lineHeight);
+  const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize);
@@ -67,14 +67,14 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
       const font = getBestFont(char);
       const glyph = font.charToGlyph(char);
       const path = glyph.getPath(x, yBaseline, fontSize);
-      paths.push(`<path d="${path.toPathData(2)}" fill="${color}" />`);
+      pathElements.push(`<path d="${path.toPathData(2)}" fill="${color}" stroke="none" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * fontSize / font.unitsPerEm;
     }
   });
 
   return `
-    <svg width="${maxWidth}" height="${totalHeight}" viewBox="0 0 ${maxWidth} ${totalHeight}" xmlns="http://www.w3.org/2000/svg">
-      ${paths.join('')}
+    <svg width="${maxWidth}" height="${totalHeight}" viewBox="0 0 ${maxWidth} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+      ${pathElements.join('')}
     </svg>
   `;
 }
