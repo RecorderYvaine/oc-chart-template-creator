@@ -87,8 +87,8 @@ function App() {
   const s = useStore();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [exportMessage, setExportMessage] = useState('');
   const [isFontLoading, setIsFontLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
 
@@ -148,18 +148,19 @@ function App() {
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); 
-    setExportMessage('正在初始化矢量引擎...');
+    setRenderProgress(0);
     
     const originalZoom = zoom;
     setZoom(1);
 
     try {
-      // 1. Initialize vector fonts first with diagnostic feedback
-      await initVectorFonts((msg) => setExportMessage(msg));
+      // 1. Initialize vector fonts first
+      await initVectorFonts();
+      setRenderProgress(10);
       
       // 2. Wait for layout to settle after zoom change
-      setExportMessage('正在捕捉页面布局...');
       await new Promise(r => setTimeout(r, 600));
+      setRenderProgress(20);
 
       const canvas = canvasRef.current;
       
@@ -175,9 +176,10 @@ function App() {
       for (let i = 0; i < textElements.length; i++) {
         const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
         const text = el.value || el.placeholder || "";
-        if (!text) continue;
+        
+        setRenderProgress(20 + Math.round((i / textElements.length) * 60));
 
-        setExportMessage(`正在矢量化文字 (${i + 1}/${textElements.length})...`);
+        if (!text) continue;
 
         const style = window.getComputedStyle(el);
         const fontSize = parseFloat(style.fontSize);
@@ -200,7 +202,7 @@ function App() {
         const isTitleElement = el.placeholder === "大标题" || el.placeholder === "格子标题";
         const isBold = isTitleElement && s.theme.titleBold;
 
-        // CRITICAL FIX: Pass s.theme.fontFamily and isBold to ensure font persistence and bold state
+        // CRITICAL FIX: Pass s.theme.fontFamily and isBold (0.8px stroke logic in generator)
         const svgString = generateTextSVG(text, fontSize, width, color, textAlign, s.theme.fontFamily, isBold);
         const overlay = document.createElement('div');
         overlay.innerHTML = svgString.trim();
@@ -226,13 +228,14 @@ function App() {
       }
 
       // 5. Capture canvas node
-      setExportMessage('正在生成高清图像...');
+      setRenderProgress(90);
       const dataUrl = await toPng(canvas, { 
         quality: 1, 
         pixelRatio: 3, 
         skipFonts: true, 
         backgroundColor: 'transparent',
       });
+      setRenderProgress(100);
 
       // 6. Cleanup: Remove overlays and restore opacity
       overlays.forEach(o => canvas.removeChild(o));
@@ -242,11 +245,9 @@ function App() {
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
 
       setPreviewUrl(dataUrl);
-      setExportMessage('');
     } catch (err) {
       console.error(err);
-      setExportMessage('渲染失败，请重试');
-      setTimeout(() => setExportMessage(''), 3000);
+      alert('渲染失败，请重试');
     } finally {
       setIsGenerating(false);
       setZoom(originalZoom);
@@ -265,6 +266,24 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#111] text-[#eee] overflow-hidden selection:bg-blue-500/30">
+      {/* Rendering Modal (CRITICAL) */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="flex flex-col items-center gap-6">
+            <h2 className="text-3xl font-bold text-white tracking-widest">正在渲染...</h2>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="bg-blue-500 h-full transition-all duration-300 ease-out" 
+                  style={{ width: `${renderProgress}%` }}
+                />
+              </div>
+              <span className="text-white/70 font-mono text-sm">{renderProgress}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Export Preview Modal */}
       {previewUrl && (
         <div className={`fixed inset-0 z-[100] ${previewModalIsLight ? 'bg-white/95' : 'bg-black/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
@@ -290,7 +309,6 @@ function App() {
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
                     <option value='"HuiwenMincho", serif'>汇文明朝体</option>
-                    {/* UI REFINEMENT: Rename option, remove suffix */}
                     <option value='"QijiP1", "QijiP2", "HuiwenMincho", serif'>齐伋体</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
@@ -342,7 +360,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -357,7 +375,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -374,7 +392,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -397,7 +415,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -421,7 +439,7 @@ function App() {
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
+                    <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -486,7 +504,6 @@ function App() {
 
       {/* Main Area */}
       <div className="flex-1 overflow-auto p-12 bg-neutral-800 relative scroll-smooth font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
-        {exportMessage && <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[110] bg-blue-600 text-white px-8 py-3 rounded-full animate-bounce flex items-center gap-3 shadow-2xl font-bold"><span>{exportMessage}</span></div>}
         <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
           <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
           <div className="text-center text-xs font-bold text-gray-400 py-1">{Math.round(zoom * 100)}%</div>
@@ -501,7 +518,7 @@ function App() {
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '1px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
+                 <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
               </div>
               <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
               <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.subtitleSize}px`, fontWeight: 'normal' }}>
@@ -542,7 +559,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.5px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
+                                <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
                               </div>
                             )}
                             {(s.theme.showGridSubtitle !== false && item.showSubtitle !== false) && (
