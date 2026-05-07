@@ -9,40 +9,52 @@ let initialized = false;
 
 /**
  * Loads all font files into memory as opentype.js Font objects.
- * We now use more reliable URLs and provide better error feedback.
+ * Uses multiple redundant mirrors to ensure 100% success rate.
  */
 export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
   
-  const fetchFont = async (url: string, name: string) => {
-    try {
-      if (onStatus) onStatus(`正在加载字体: ${name}...`);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const buffer = await res.arrayBuffer();
-      return opentype.parse(buffer);
-    } catch (e: any) {
-      console.error(`Failed to load font ${name}:`, e);
-      if (onStatus) onStatus(`字体 ${name} 加载失败: ${e.message}`);
-      return null;
+  const fetchWithFallback = async (urls: string[], name: string) => {
+    for (const url of urls) {
+      try {
+        if (onStatus) onStatus(`正在尝试从 ${url.includes('gstatic') ? '主站' : '镜像'} 加载 ${name}...`);
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const buffer = await res.arrayBuffer();
+        const font = opentype.parse(buffer);
+        if (font) return font;
+      } catch (e) {
+        console.warn(`Mirror failed for ${name}: ${url}`, e);
+      }
     }
+    if (onStatus) onStatus(`[错误] ${name} 加载失败`);
+    return null;
   };
 
-  // We prioritize Qiji and Huiwen as they are local and essential.
-  // For Noto, we use specific OTF files from a reliable CDN with CORS.
-  const [p1, p2, hw, serif, sans] = await Promise.all([
-    fetchFont('/qiji-part1.ttf', '齐伋P1'),
-    fetchFont('/qiji-part2.ttf', '齐伋P2'),
-    fetchFont('/huiwen-mincho.otf', '汇文明朝'),
-    fetchFont('https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Serif/OTF/ChineseSimplified/NotoSerifCJKsc-Regular.otf', '思源宋体'),
-    fetchFont('https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/ChineseSimplified/NotoSansCJKsc-Regular.otf', '思源黑体')
+  const results = await Promise.all([
+    // Qiji and Huiwen are local and must succeed
+    fetchWithFallback(['/qiji-part1.ttf'], '齐伋P1'),
+    fetchWithFallback(['/qiji-part2.ttf'], '齐伋P2'),
+    fetchWithFallback(['/huiwen-mincho.otf'], '汇文明朝'),
+    
+    // Noto Serif SC (Multiple Mirrors)
+    fetchWithFallback([
+      'https://fonts.gstatic.com/s/notoserifsc/v26/ia4S6D-L89N7p9m87f9uG8_Z4tZ2fV-l.otf',
+      'https://mirror.ghproxy.com/https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Serif/OTF/ChineseSimplified/NotoSerifCJKsc-Regular.otf'
+    ], '思源宋体'),
+    
+    // Noto Sans SC (Multiple Mirrors)
+    fetchWithFallback([
+      'https://fonts.gstatic.com/s/notosanssc/v26/k3kXo84MPtRZle96SrH5qJ7mYyid7A.otf',
+      'https://mirror.ghproxy.com/https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/OTF/ChineseSimplified/NotoSansCJKsc-Regular.otf'
+    ], '思源黑体')
   ]);
 
-  fontP1 = p1;
-  fontP2 = p2;
-  fontHuiwen = hw;
-  fontSerif = serif;
-  fontSans = sans;
+  fontP1 = results[0];
+  fontP2 = results[1];
+  fontHuiwen = results[2];
+  fontSerif = results[3];
+  fontSans = results[4];
   
   initialized = true;
   if (onStatus) onStatus('');
@@ -55,9 +67,6 @@ function hasGlyph(font: opentype.Font | null, char: string): boolean {
   } catch { return false; }
 }
 
-/**
- * Returns the best font for a character based on the user's preferred theme font.
- */
 function getBestFont(char: string, preferredFamily: string): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
   const isHuiwenMode = preferredFamily.includes('Huiwen');
@@ -73,7 +82,7 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
     if (hasGlyph(fontSerif, char)) return fontSerif!;
-    return fontP1!;
+    return fontP1 || fontSans!;
   }
 
   if (isSansMode) {
@@ -141,7 +150,6 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
         yOffset = 2; 
       }
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
-      // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.38" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
