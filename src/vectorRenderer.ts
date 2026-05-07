@@ -9,36 +9,30 @@ let fontSans: opentype.Font | null = null;
 let fontSansBold: opentype.Font | null = null;
 let initialized = false;
 
-/**
- * Loads all font files into memory as opentype.js Font objects.
- * Now including both Regular and Bold versions of Noto for perfect rendering.
- */
 export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
   
   const fetchFont = async (url: string, name: string) => {
     try {
-      if (onStatus) onStatus(`正在加载本地字体: ${name}...`);
+      if (onStatus) onStatus(`正在加载本地资源: ${name}...`);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buffer = await res.arrayBuffer();
-      const font = opentype.parse(buffer);
-      return font;
+      return opentype.parse(buffer);
     } catch (e: any) {
-      console.error(`Failed to load local font ${name}:`, e);
-      if (onStatus) onStatus(`字体 ${name} 加载失败: ${e.message}`);
+      console.error(`Failed to load font ${name}:`, e);
       return null;
     }
   };
 
   const results = await Promise.all([
-    fetchFont('/qiji-part1.ttf', '齐伋P1'),
-    fetchFont('/qiji-part2.ttf', '齐伋P2'),
-    fetchFont('/huiwen-mincho.otf', '汇文明朝'),
-    fetchFont('/noto-serif.ttf', '思源宋体'),
-    fetchFont('/noto-serif-bold.ttf', '思源宋体-粗体'),
-    fetchFont('/noto-sans.ttf', '思源黑体'),
-    fetchFont('/noto-sans-bold.ttf', '思源黑体-粗体')
+    fetchFont('/qiji-part1.ttf', '分包1'),
+    fetchFont('/qiji-part2.ttf', '分包2'),
+    fetchFont('/huiwen-mincho.otf', '明朝'),
+    fetchFont('/noto-serif.ttf', '宋体'),
+    fetchFont('/noto-serif-bold.ttf', '宋体粗'),
+    fetchFont('/noto-sans.ttf', '黑体'),
+    fetchFont('/noto-sans-bold.ttf', '黑体粗')
   ]);
 
   fontP1 = results[0];
@@ -60,15 +54,11 @@ function hasGlyph(font: opentype.Font | null, char: string): boolean {
   } catch { return false; }
 }
 
-/**
- * Returns the best font for a character based on the user's preferred theme font and bold state.
- */
 function getBestFont(char: string, preferredFamily: string, isBold: boolean): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
   const isHuiwenMode = preferredFamily.includes('Huiwen');
   const isSansMode = preferredFamily.includes('Sans');
 
-  // 1. If Qiji mode: P1 -> P2 -> Huiwen (Note: Qiji has no native bold file)
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
@@ -76,24 +66,20 @@ function getBestFont(char: string, preferredFamily: string, isBold: boolean): op
     return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontP1!);
   }
 
-  // 2. If Huiwen mode: Huiwen -> Serif (Note: Huiwen has no native bold file)
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
     return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontP1!);
   }
 
-  // 3. If Sans mode: Use REAL Bold Sans if requested
   if (isSansMode) {
     if (isBold && fontSansBold && hasGlyph(fontSansBold, char)) return fontSansBold;
     if (hasGlyph(fontSans, char)) return fontSans!;
     return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontHuiwen!);
   }
 
-  // 4. Default Serif mode: Use REAL Bold Serif if requested
   if (isBold && fontSerifBold && hasGlyph(fontSerifBold, char)) return fontSerifBold;
   if (hasGlyph(fontSerif, char)) return fontSerif!;
-  if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-  return fontP1 || fontP2 || fontHuiwen!;
+  return fontP1 || fontHuiwen || fontSans!;
 }
 
 function measureWidth(text: string, fontSize: number, preferredFamily: string, isBold: boolean): number {
@@ -101,22 +87,29 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string, i
   for (const char of text) {
     const font = getBestFont(char, preferredFamily, isBold);
     const glyph = font.charToGlyph(char);
-    
-    let currentFontSize = fontSize;
-    // Smart sizing for fallback commas
+    let curSize = fontSize;
     if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
-      currentFontSize = Math.max(10, fontSize - 4);
+      curSize = Math.max(10, fontSize - 4);
     }
-    width += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
+    width += (glyph.advanceWidth || font.unitsPerEm) * curSize / font.unitsPerEm;
   }
   return width;
 }
 
-export function generateTextSVG(text: string, fontSize: number, maxWidth: number, color: string, align: 'left' | 'center' = 'center', preferredFamily: string = "", isBold: boolean = false) {
-  const lineHeight = 1.4;
+export function generateTextSVG(
+  text: string, 
+  fontSize: number, 
+  maxWidth: number, 
+  targetHeight: number,
+  color: string, 
+  align: 'left' | 'center' = 'center', 
+  preferredFamily: string = "", 
+  isBold: boolean = false
+) {
+  const lineHeightMult = 1.35;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
-  const safeMaxWidth = maxWidth * 0.99;
+  const safeMaxWidth = maxWidth - 4; // Minor padding margin
 
   for (const p of paragraphs) {
     let currentLine = "";
@@ -132,45 +125,42 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     if (currentLine) lines.push(currentLine);
   }
 
-  const verticalPadding = fontSize * 1.2; 
-  const totalHeight = lines.length * fontSize * lineHeight + verticalPadding;
+  // Calculate vertical start to center lines within targetHeight
+  const contentHeight = lines.length * fontSize * lineHeightMult;
+  const startY = (targetHeight - contentHeight) / 2;
+  
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily, isBold);
-    const yBaseline = (idx + 0.95) * fontSize * lineHeight + (fontSize * 0.3);
+    // Baseline is roughly 80% down from the line top
+    const yBaseline = startY + (idx + 0.82) * fontSize * lineHeightMult;
     let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
     
     for (const char of line) {
       const font = getBestFont(char, preferredFamily, isBold);
       const glyph = font.charToGlyph(char);
+      let curSize = fontSize;
+      let yOff = 0;
       
-      let currentFontSize = fontSize;
-      let yOffset = 0;
       if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
-        currentFontSize = Math.max(10, fontSize - 4);
-        yOffset = 2; 
+        curSize = Math.max(10, fontSize - 4);
+        yOff = 2;
       }
 
-      const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
-      
-      // LOGIC: If the font is already a BOLD pack, use a very light stroke (0.15) for "ink weight".
-      // If it's a regular pack but bold is requested (like Qiji), use heavy stroke (0.9) to simulate bold.
+      const path = glyph.getPath(x, yBaseline + yOff, curSize);
       const isNativeBold = (font === fontSerifBold || font === fontSansBold);
-      let sw = 0.38; // Default weight
-      if (isBold) {
-        sw = isNativeBold ? 0.2 : 0.9;
-      }
+      const sw = isBold ? (isNativeBold ? 0.2 : 0.9) : 0.38;
 
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
-      x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
+      x += (glyph.advanceWidth || font.unitsPerEm) * curSize / font.unitsPerEm;
     }
   });
 
   return `
-    <svg width="${maxWidth}" height="${totalHeight}" viewBox="0 0 ${maxWidth} ${totalHeight}" 
+    <svg width="${maxWidth}" height="${targetHeight}" viewBox="0 0 ${maxWidth} ${targetHeight}" 
       xmlns="http://www.w3.org/2000/svg" 
-      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.2}px);">
+      style="display: block; overflow: visible; background: transparent;">
       ${pathElements.join('')}
     </svg>
   `;

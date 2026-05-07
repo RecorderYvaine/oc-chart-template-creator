@@ -182,13 +182,13 @@ function App() {
         const padding = style.padding;
 
         const elRect = el.getBoundingClientRect();
-        const left = (elRect.left - canvasRect.left) / zoom;
-        const top = (elRect.top - canvasRect.top) / zoom;
+        const left = (elRect.left - canvasRect.left) / originalZoom;
+        const top = (elRect.top - canvasRect.top) / originalZoom;
 
         const isTitle = el.classList.contains('title-big') || el.classList.contains('title-grid');
         const isBold = isTitle && s.theme.titleBold;
 
-        const svgString = generateTextSVG(text, fontSize, el.offsetWidth, color, textAlign, s.theme.fontFamily, isBold);
+        const svgString = generateTextSVG(text, fontSize, el.offsetWidth, el.offsetHeight, color, textAlign, s.theme.fontFamily, isBold);
         const overlay = document.createElement('div');
         overlay.innerHTML = svgString.trim();
         overlay.style.position = 'absolute';
