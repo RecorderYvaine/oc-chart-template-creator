@@ -145,8 +145,7 @@ function App() {
 
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
-    setIsGenerating(true); 
-    setExportMessage('正在准备超清预览...');
+    setIsGenerating(true); setExportMessage('正在准备预览...');
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
     
@@ -217,7 +216,7 @@ function App() {
           <div className="w-full h-full flex items-center justify-center overflow-auto mt-12 scrollbar-hide">
              <img src={previewUrl} className={`max-w-none shadow-[0_0_80px_rgba(0,0,0,0.5)] border ${isLightColor(s.theme.bgColor) ? 'border-white/5' : 'border-black/5'}`} alt="Preview" style={{ zoom: 0.25 }} />
           </div>
-          <p className={`mt-8 font-medium text-sm ${isLightColor(s.theme.bgColor) ? 'text-gray-400' : 'text-gray-600'}`}>此为 3x 超清预览，下载后将保存为高清 PNG 格式</p>
+          <p className={`mt-8 font-medium text-sm ${isLightColor(s.theme.bgColor) ? 'text-gray-400' : 'text-gray-600'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
         </div>
       )}
 
@@ -443,7 +442,7 @@ function App() {
             className="w-full bg-white text-black py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 transition-all active:scale-[0.98]"
           >
             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} 
-            {isGenerating ? '渲染中...' : '生成 3x 超清预览'}
+            {isGenerating ? '渲染中...' : '生成预览'}
           </button>
         </div>
       </div>
