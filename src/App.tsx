@@ -13,62 +13,73 @@ const isLightColor = (color: string) => {
   return brightness > 155;
 };
 
-// Component to render the background sheet with physical holes
-function PunchHoleBackground({ containerRef, bgColor, isTransparent, gridGap, rowGap }: { 
+// Component to render the background sheet with physically subtracted paths (Donut approach)
+function PunchHoleBackground({ containerRef, bgColor, isTransparent, zoom, rowCount, colCount, containerWidth }: { 
   containerRef: React.RefObject<HTMLDivElement | null>, 
   bgColor: string, 
   isTransparent: boolean,
-  gridGap: number,
-  rowGap: number
+  zoom: number,
+  rowCount: number,
+  colCount: number,
+  containerWidth: number
 }) {
-  const [holes, setHoles] = useState<{x: number, y: number, w: number, h: number}[]>([]);
+  const [pathData, setPathData] = useState("");
 
   useLayoutEffect(() => {
     const update = () => {
       if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
+      const parent = containerRef.current;
+      
+      // Use offsetHeight/Width to get internal dimensions regardless of CSS scale
+      const w = parent.offsetWidth;
+      const h = parent.offsetHeight;
 
       if (!isTransparent) {
-        setHoles([]);
+        setPathData(`M 0 0 h ${w} v ${h} h -${w} z`);
         return;
       }
-
-      const boxEls = containerRef.current.querySelectorAll('.grid-box-inner');
-      const newHoles: {x: number, y: number, w: number, h: number}[] = [];
+      
+      const boxEls = parent.querySelectorAll('.grid-box-inner');
+      // Create a path that fills the entire area, then subtract holes using reverse winding
+      let d = `M 0 0 h ${w} v ${h} h -${w} z`;
+      
       boxEls.forEach(el => {
-        const bRect = el.getBoundingClientRect();
-        newHoles.push({
-          x: bRect.left - rect.left,
-          y: bRect.top - rect.top,
-          w: bRect.width,
-          h: bRect.height
-        });
+        const target = el as HTMLElement;
+        let x = 0;
+        let y = 0;
+        let current: HTMLElement | null = target;
+        
+        // Accurate recursive offset parent calculation
+        while (current && current !== parent) {
+          x += current.offsetLeft;
+          y += current.offsetTop;
+          current = current.offsetParent as HTMLElement;
+        }
+
+        const bw = target.offsetWidth;
+        const bh = target.offsetHeight;
+        
+        // Subtract rect by winding in reverse direction
+        d += ` M ${x} ${y} v ${bh} h ${bw} v -${bh} z`;
       });
-      setHoles(newHoles);
+      setPathData(d);
     };
 
     update();
+    const timer = setTimeout(update, 200); // Wait for DOM stabilization
     const observer = new ResizeObserver(update);
     if (containerRef.current) observer.observe(containerRef.current);
-    // Also watch for scroll/changes
     window.addEventListener('resize', update);
     return () => {
+      clearTimeout(timer);
       observer.disconnect();
       window.removeEventListener('resize', update);
     };
-  }, [containerRef, isTransparent, gridGap, rowGap]);
+  }, [containerRef, isTransparent, zoom, rowCount, colCount, containerWidth, bgColor]);
 
   return (
     <svg className="absolute inset-0 z-0 pointer-events-none w-full h-full" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <mask id="punch-hole-mask">
-          <rect width="100%" height="100%" fill="white" />
-          {holes.map((h, i) => (
-            <rect key={i} x={h.x} y={h.y} width={h.w} height={h.h} fill="black" />
-          ))}
-        </mask>
-      </defs>
-      <rect width="100%" height="100%" fill={bgColor} mask={isTransparent ? "url(#punch-hole-mask)" : undefined} />
+      <path d={pathData} fill={bgColor} fillRule="evenodd" />
     </svg>
   );
 }
@@ -140,7 +151,7 @@ function App() {
 
     try {
       await document.fonts.ready;
-      if (zoom !== 1) await new Promise(r => setTimeout(r, 400));
+      if (zoom !== 1) await new Promise(r => setTimeout(r, 500));
       
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
@@ -269,7 +280,7 @@ function App() {
                 { label: '格子小', key: 'baseSubtitleSize', max: 60 }
               ].map(item => (
                 <div key={item.key} className="flex items-center gap-3 py-1">
-                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-200">{item.label}</span>
+                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-100">{item.label}</span>
                   <input type="range" min="10" max={item.max} value={(s.theme as any)[item.key]} onChange={(e) => s.setTheme({ [item.key]: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                   <input type="number" value={(s.theme as any)[item.key]} onChange={(e) => s.setTheme({ [item.key]: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[12px] rounded p-1 text-gray-100" />
                 </div>
@@ -351,8 +362,16 @@ function App() {
 
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
-            {/* Background Sheet - The color to be punched through */}
-            <PunchHoleBackground containerRef={canvasRef} bgColor={s.theme.bgColor} isTransparent={s.theme.isTransparentBg} gridGap={s.gridGap} rowGap={s.rowGap} />
+            {/* Background Sheet with physical holes */}
+            <PunchHoleBackground 
+              containerRef={canvasRef} 
+              bgColor={s.theme.bgColor} 
+              isTransparent={s.theme.isTransparentBg} 
+              zoom={zoom} 
+              rowCount={s.rows.length} 
+              colCount={maxItemsCount}
+              containerWidth={s.containerWidth}
+            />
             
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
@@ -416,7 +435,7 @@ function App() {
                                    <input type="color" value={line.color || s.theme.textColor} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { color: e.target.value })} className="w-3 h-3 p-0 border-0 bg-transparent cursor-pointer" />
                                    <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) + 2 })} className="text-[10px] text-blue-500 font-bold">+</button>
                                    <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
-                                   <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1"><Trash2 className="w-3 h-3" /></button>
+                                   <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
                                 </div>
                                 <textarea className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onInput={hAR} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} placeholder={`描述行 ${lineIndex + 1}`} />
                               </div>
