@@ -7,6 +7,24 @@
   --color-oc-accent: var(--oc-accent, #888888);
 }
 
+@font-face {
+  font-family: 'QijiP1';
+  src: url('/qiji-part1.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'QijiP2';
+  src: url('/qiji-part2.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HuiwenMincho';
+  src: url('/huiwen-mincho.otf') format('opentype');
+  font-display: swap;
+}
+
 body {
   background-color: #1a1a1a;
   color: #eeeeee;

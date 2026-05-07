@@ -5,7 +5,7 @@ import {
   ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, 
   X, Search, ZoomIn, ZoomOut, RotateCcw 
 } from 'lucide-react';
-import { domToPng } from 'modern-screenshot';
+import html2canvas from 'html2canvas';
 
 const isLightColor = (color: string) => {
   const hex = color.replace('#', '');
@@ -96,11 +96,11 @@ function App() {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Preload fonts immediately on mount
+  // Preload fonts
   useEffect(() => {
     document.fonts.load('1em "QijiP1"').catch(() => {});
     document.fonts.load('1em "QijiP2"').catch(() => {});
-    document.fonts.load('1em "Huiwen"').catch(() => {});
+    document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
   // Font loading state management
@@ -112,11 +112,11 @@ function App() {
       Promise.all([
         document.fonts.load('1em "QijiP1"'),
         document.fonts.load('1em "QijiP2"'),
-        document.fonts.load('1em "Huiwen"')
+        document.fonts.load('1em "HuiwenMincho"')
       ]).finally(() => setIsFontLoading(false));
     } else if (family.includes('Huiwen')) {
       setIsFontLoading(true);
-      document.fonts.load('1em "Huiwen"').finally(() => setIsFontLoading(false));
+      document.fonts.load('1em "HuiwenMincho"').finally(() => setIsFontLoading(false));
     } else {
       setIsFontLoading(false);
     }
@@ -140,39 +140,38 @@ function App() {
 
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
-    setIsGenerating(true); setExportMessage('正在准备预览...');
+    setIsGenerating(true); 
+    setExportMessage('正在准备预览...');
+    
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
+
     try {
-      // Wait for ALL three fonts to be ready
-      await Promise.all([
-        document.fonts.load('1em "QijiP1"'),
-        document.fonts.load('1em "QijiP2"'),
-        document.fonts.load('1em "Huiwen"')
-      ]);
       await document.fonts.ready;
-      
-      // Increase the "wait for rasterization" delay to 3000ms
-      await new Promise(r => setTimeout(r, 3000));
+      // Small delay for layout to settle
+      await new Promise(r => setTimeout(r, 500));
 
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      await new Promise(r => setTimeout(r, 200));
-
-      const dataUrl = await domToPng(original, { 
+      const canvas = await html2canvas(original, { 
         scale: 3, 
-        backgroundColor: 'rgba(0,0,0,0)', 
-        width: original.offsetWidth,
-        height: original.offsetHeight,
+        backgroundColor: null, 
+        useCORS: true, 
+        allowTaint: true 
       });
+
+      const dataUrl = canvas.toDataURL('image/png');
 
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
       setPreviewUrl(dataUrl);
-    } catch (err: any) { alert(`预览生成失败: ${err.message}`); } finally { 
+    } catch (err: any) { 
+      alert(`预览生成失败: ${err.message}`); 
+    } finally { 
       if (zoom !== 1) setZoom(currentZoom);
-      setIsGenerating(false); setExportMessage(''); 
+      setIsGenerating(false); 
+      setExportMessage(''); 
     }
   };
 
@@ -180,13 +179,15 @@ function App() {
     if (!previewUrl) return;
     const link = document.createElement('a');
     link.download = `oc-chart-${Date.now()}.png`;
-    link.href = previewUrl; link.click();
+    link.href = previewUrl; 
+    link.click();
     setPreviewUrl(null);
   };
 
   const hAR = (e: React.FormEvent<HTMLTextAreaElement>) => {
     const t = e.target as HTMLTextAreaElement;
-    t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`;
+    t.style.height = 'auto'; 
+    t.style.height = `${t.scrollHeight}px`;
   };
 
   if (!s.theme || !s.rows) return null;
@@ -227,8 +228,8 @@ function App() {
                 <div className="relative group/select">
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
-                    <option value='"Huiwen", serif'>汇文明朝体</option>
-                    <option value='"QijiP1", "QijiP2", "Huiwen", serif'>齐伋体 (Qiji)</option>
+                    <option value='"HuiwenMincho", serif'>汇文明朝体</option>
+                    <option value='"QijiP1", "QijiP2", "HuiwenMincho", serif'>齐伋体 (Qiji)</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
@@ -418,20 +419,6 @@ function App() {
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
-            <style>{`
-              @font-face {
-                font-family: 'QijiP1';
-                src: url('${window.location.origin}/qiji-part1.ttf') format('truetype');
-              }
-              @font-face {
-                font-family: 'QijiP2';
-                src: url('${window.location.origin}/qiji-part2.ttf') format('truetype');
-              }
-              @font-face {
-                font-family: 'Huiwen';
-                src: url('${window.location.origin}/huiwen-mincho.otf') format('opentype');
-              }
-            `}</style>
             <PunchHoleBackground containerRef={canvasRef} bgColor={s.theme.bgColor} isTransparent={s.theme.isTransparentBg} zoom={zoom} rowCount={s.rows.length} colCount={maxItemsCount} containerWidth={s.containerWidth} />
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
@@ -457,7 +444,8 @@ function App() {
                       <button onClick={() => s.removeRow(row.id)} className="p-1 bg-red-600 text-white rounded-lg shadow-lg hover:scale-110" title="删行"><Trash2 className="w-4 h-4" /></button>
                     </div>
                     {row.items.map((item) => {
-                      const cTS = item.titleSize || s.theme.baseTitleSize; const cSS = item.subtitleSize || s.theme.baseSubtitleSize;
+                      const cTS = item.titleSize || s.theme.baseTitleSize; 
+                      const cSS = item.subtitleSize || s.theme.baseSubtitleSize;
                       return (
                         <div key={item.id} className="flex flex-col relative group/box transition-all duration-300" style={{ flex: row.fillWidth ? '1 1 0%' : 'none', width: row.fillWidth ? 'auto' : `${s.theme.boxBaseWidth}px` }}>
                           <div className="no-export absolute top-2 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/box:opacity-100 transition-opacity z-20 bg-[#1a1a1a]/95 backdrop-blur-md p-1.5 rounded-xl border border-[#333] items-center text-[10px] shadow-2xl min-w-max transition-all">
