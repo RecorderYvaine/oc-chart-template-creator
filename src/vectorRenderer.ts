@@ -9,25 +9,36 @@ let initialized = false;
 
 /**
  * Loads all font files into memory as opentype.js Font objects.
- * Now including Noto fonts to prevent everything from falling back to Huiwen.
+ * Uses local copies where possible to prevent rendering failure.
  */
 export async function initVectorFonts() {
   if (initialized) return;
   
-  const results = await Promise.allSettled([
-    fetch('/qiji-part1.ttf').then(r => r.arrayBuffer()),
-    fetch('/qiji-part2.ttf').then(r => r.arrayBuffer()),
-    fetch('/huiwen-mincho.otf').then(r => r.arrayBuffer()),
-    // Use the same fonts as the live site for exact matching in vector mode
-    fetch('https://fonts.gstatic.com/s/notoserifsc/v26/ia4S6D-L89N7p9m87f9uG8_Z4tZ2fV-l.otf').then(r => r.arrayBuffer()),
-    fetch('https://fonts.gstatic.com/s/notosanssc/v26/k3kXo84MPtRZle96SrH5qJ7mYyid7A.otf').then(r => r.arrayBuffer())
+  const fetchFont = async (url: string) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return await res.arrayBuffer();
+    } catch { return null; }
+  };
+
+  const [p1, p2, hw, serif, sans] = await Promise.all([
+    fetchFont('/qiji-part1.ttf'),
+    fetchFont('/qiji-part2.ttf'),
+    fetchFont('/huiwen-mincho.otf'),
+    fetchFont('https://fonts.gstatic.com/s/notoserifsc/v26/ia4S6D-L89N7p9m87f9uG8_Z4tZ2fV-l.otf'),
+    fetchFont('https://fonts.gstatic.com/s/notosanssc/v26/k3kXo84MPtRZle96SrH5qJ7mYyid7A.otf')
   ]);
 
-  if (results[0].status === 'fulfilled') fontP1 = opentype.parse(results[0].value);
-  if (results[1].status === 'fulfilled') fontP2 = opentype.parse(results[1].value);
-  if (results[2].status === 'fulfilled') fontHuiwen = opentype.parse(results[2].value);
-  if (results[3].status === 'fulfilled') fontSerif = opentype.parse(results[3].value);
-  if (results[4].status === 'fulfilled') fontSans = opentype.parse(results[4].value);
+  try {
+    if (p1) fontP1 = opentype.parse(p1);
+    if (p2) fontP2 = opentype.parse(p2);
+    if (hw) fontHuiwen = opentype.parse(hw);
+    if (serif) fontSerif = opentype.parse(serif);
+    if (sans) fontSans = opentype.parse(sans);
+  } catch (e) {
+    console.error("Font parsing failed:", e);
+  }
   
   initialized = true;
 }
@@ -35,7 +46,8 @@ export async function initVectorFonts() {
 function hasGlyph(font: opentype.Font | null, char: string): boolean {
   if (!font) return false;
   try {
-    return font.charToGlyphIndex(char) > 0;
+    const idx = font.charToGlyphIndex(char);
+    return idx > 0;
   } catch { return false; }
 }
 
@@ -47,7 +59,6 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
   const isHuiwenMode = preferredFamily.includes('Huiwen');
   const isSansMode = preferredFamily.includes('Sans');
 
-  // 1. If Qiji mode: P1 -> P2 -> Huiwen (for symbols/fallback)
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
@@ -55,21 +66,21 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
     return fontSerif || fontP1!;
   }
 
-  // 2. If Huiwen mode: Huiwen -> Serif
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-    return fontSerif || fontP1!;
+    if (hasGlyph(fontSerif, char)) return fontSerif!;
+    return fontP1!;
   }
 
-  // 3. If Sans mode: Sans -> Serif
   if (isSansMode) {
     if (hasGlyph(fontSans, char)) return fontSans!;
-    return fontSerif || fontP1!;
+    if (hasGlyph(fontSerif, char)) return fontSerif!;
+    return fontHuiwen!;
   }
 
-  // 4. Default Serif mode: Serif -> P1
   if (hasGlyph(fontSerif, char)) return fontSerif!;
-  return fontP1 || fontHuiwen || fontSans!;
+  if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
+  return fontP1!;
 }
 
 function measureWidth(text: string, fontSize: number, preferredFamily: string): number {
@@ -77,11 +88,9 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string): 
   for (const char of text) {
     const font = getBestFont(char, preferredFamily);
     const glyph = font.charToGlyph(char);
-    
     let currentFontSize = fontSize;
-    // Smart sizing: commas in Huiwen while using Qiji should be slightly smaller
     if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
-      currentFontSize -= 2;
+      currentFontSize = Math.max(10, fontSize - 4);
     }
     width += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
   }
@@ -92,7 +101,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
   const lineHeight = 1.4;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
-  const safeMaxWidth = maxWidth * 0.98;
+  const safeMaxWidth = maxWidth * 0.99;
 
   for (const p of paragraphs) {
     let currentLine = "";
@@ -120,18 +129,14 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     for (const char of line) {
       const font = getBestFont(char, preferredFamily);
       const glyph = font.charToGlyph(char);
-      
       let currentFontSize = fontSize;
       let yOffset = 0;
-      // Smart Comma Logic: decrease size by 2px and nudge down if it's fallback Huiwen
       if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
-        currentFontSize -= 2;
-        yOffset = 1; 
+        currentFontSize = Math.max(10, fontSize - 4);
+        yOffset = 2; 
       }
-
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
-      // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
-      pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.3" stroke-linejoin="round" />`);
+      pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.38" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
   });
