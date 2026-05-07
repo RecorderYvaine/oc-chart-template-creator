@@ -6,6 +6,7 @@ import {
   X, Search, ZoomIn, ZoomOut, RotateCcw 
 } from 'lucide-react';
 import { domToPng } from 'modern-screenshot';
+import { qijiBase64 } from './fontData';
 
 const isLightColor = (color: string) => {
   const hex = color.replace('#', '');
@@ -148,26 +149,34 @@ function App() {
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
     try {
-      // Preloading: Wait for BOTH parts by loading "1em QijiCombo" and checking document.fonts.ready
       await document.fonts.load('1em QijiCombo');
       await document.fonts.ready;
       
-      // HARDENING: Pre-warming Step
-      // Force browser to render all glyphs before capture
       const offscreen = document.createElement('canvas');
       const ctx = offscreen.getContext('2d');
       if (ctx) {
         ctx.font = '10px QijiCombo';
-        ctx.fillText('测试生僻字和常用字', 0, 0); 
+        ctx.fillText('测试渲染', 0, 0); 
       }
-      await new Promise(r => setTimeout(r, 1200)); // Give ample time for rasterization
+      
+      // Wait 1000ms as requested
+      await new Promise(r => setTimeout(r, 1000));
 
-      if (zoom !== 1) await new Promise(r => setTimeout(r, 400));
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
-      await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await domToPng(original, { scale: 3, backgroundColor: 'rgba(0,0,0,0)', width: original.offsetWidth, height: original.offsetHeight });
+      
+      // Short delay for visibility change
+      await new Promise(r => setTimeout(r, 200));
+
+      const dataUrl = await domToPng(original, { 
+        scale: 3, 
+        backgroundColor: 'rgba(0,0,0,0)', 
+        width: original.offsetWidth,
+        height: original.offsetHeight,
+        // fontEmbedCSS removed as requested
+      });
+
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
       setPreviewUrl(dataUrl);
     } catch (err: any) { alert(`预览生成失败: ${err.message}`); } finally { 
@@ -201,6 +210,30 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#1a1a1a] text-gray-300 font-sans overflow-hidden text-[15px]">
+      <style>{`
+        @font-face {
+          font-family: 'QijiCombo';
+          src: url('/qiji-part1.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+        @font-face {
+          font-family: 'QijiCombo';
+          src: url('/qiji-part2.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+        @font-face {
+          font-family: 'QijiCombo';
+          src: url(data:font/woff2;base64,${qijiBase64}) format('woff2');
+          font-weight: normal;
+          font-style: normal;
+          font-display: block;
+        }
+      `}</style>
+
       {/* Preview Modal */}
       {previewUrl && (
         <div className={`fixed inset-0 z-[100] ${isLightColor(s.theme.bgColor) ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
@@ -500,12 +533,10 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="no-export flex justify-center mt-12 mb-20">
-            <button onClick={s.addRow} className="group flex items-center gap-3 bg-[#222] hover:bg-blue-600 border border-[#444] hover:border-blue-500 text-gray-400 hover:text-white px-12 py-4 rounded-full transition-all shadow-2xl font-bold uppercase tracking-widest text-sm"><Plus className="w-5 h-5 transition-transform group-hover:rotate-90" /><span>添加新行</span></button>
-          </div>
         </div>
       </div>
     </div>
   );
 }
+
 export default App;
