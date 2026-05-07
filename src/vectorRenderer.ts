@@ -9,65 +9,94 @@ let fontSans: opentype.Font | null = null;
 let fontSansBold: opentype.Font | null = null;
 let initialized = false;
 
+/**
+ * Loads all font files into memory as opentype.js Font objects.
+ * We now use ONLY local files to ensure 100% reliability and speed.
+ */
 export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
+  
   const fetchFont = async (url: string, name: string) => {
     try {
-      if (onStatus) onStatus(`加载字体资源: ${name}...`);
+      if (onStatus) onStatus(`正在加载本地资源: ${name}...`);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buffer = await res.arrayBuffer();
-      return opentype.parse(buffer);
+      const font = opentype.parse(buffer);
+      return font;
     } catch (e: any) {
-      console.error(`Failed to load font ${name}:`, e);
+      console.error(`Failed to load local font ${name}:`, e);
+      if (onStatus) onStatus(`字体 ${name} 加载失败: ${e.message}`);
       return null;
     }
   };
 
   const results = await Promise.all([
-    fetchFont('/qiji-part1.ttf', '齐伋1'),
-    fetchFont('/qiji-part2.ttf', '齐伋2'),
-    fetchFont('/huiwen-mincho.otf', '明朝'),
-    fetchFont('/noto-serif.ttf', '宋体'),
-    fetchFont('/noto-serif-bold.ttf', '宋体粗'),
-    fetchFont('/noto-sans.ttf', '黑体'),
-    fetchFont('/noto-sans-bold.ttf', '黑体粗')
+    fetchFont('/qiji-part1.ttf', '齐伋P1'),
+    fetchFont('/qiji-part2.ttf', '齐伋P2'),
+    fetchFont('/huiwen-mincho.otf', '汇文明朝'),
+    fetchFont('/noto-serif.ttf', '思源宋体'),
+    fetchFont('/noto-serif-bold.ttf', '思源宋体-粗体'),
+    fetchFont('/noto-sans.ttf', '思源黑体'),
+    fetchFont('/noto-sans-bold.ttf', '思源黑体-粗体')
   ]);
 
-  fontP1 = results[0]; fontP2 = results[1]; fontHuiwen = results[2];
-  fontSerif = results[3]; fontSerifBold = results[4];
-  fontSans = results[5]; fontSansBold = results[6];
+  fontP1 = results[0];
+  fontP2 = results[1];
+  fontHuiwen = results[2];
+  fontSerif = results[3];
+  fontSerifBold = results[4];
+  fontSans = results[5];
+  fontSansBold = results[6];
+  
   initialized = true;
   if (onStatus) onStatus('');
 }
 
 function hasGlyph(font: opentype.Font | null, char: string): boolean {
   if (!font) return false;
-  try { return font.charToGlyphIndex(char) > 0; } catch { return false; }
+  try {
+    // Opentype.js charToGlyphIndex returns 0 for .notdef
+    // We check glyph index > 0 to ensure the font actually HAS the character
+    const index = font.charToGlyphIndex(char);
+    return index > 0;
+  } catch { return false; }
 }
 
+/**
+ * Returns the best font for a character based on the user's preferred theme font.
+ */
 function getBestFont(char: string, preferredFamily: string, isBold: boolean): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
   const isHuiwenMode = preferredFamily.includes('Huiwen');
   const isSansMode = preferredFamily.includes('Sans');
 
+  // 1. If Qiji mode: P1 -> P2 -> Huiwen (for symbols/fallback)
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
     return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontP1!);
   }
+
+  // 2. If Huiwen mode: Huiwen -> Serif
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
     return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontP1!);
   }
+
+  // 3. If Sans mode: Use REAL Bold Sans if requested
   if (isSansMode) {
     if (isBold && fontSansBold && hasGlyph(fontSansBold, char)) return fontSansBold;
     if (hasGlyph(fontSans, char)) return fontSans!;
     return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontHuiwen!);
   }
+
+  // 4. Default Serif mode: Use REAL Bold Serif if requested
   if (isBold && fontSerifBold && hasGlyph(fontSerifBold, char)) return fontSerifBold;
-  return fontSerif || fontP1 || fontHuiwen!;
+  if (hasGlyph(fontSerif, char)) return fontSerif!;
+  if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
+  return fontP1 || fontP2 || fontHuiwen!;
 }
 
 function measureWidth(text: string, fontSize: number, preferredFamily: string, isBold: boolean): number {
@@ -75,11 +104,13 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string, i
   for (const char of text) {
     const font = getBestFont(char, preferredFamily, isBold);
     const glyph = font.charToGlyph(char);
-    let curSize = fontSize;
+    
+    let currentFontSize = fontSize;
+    // Smart sizing for fallback commas
     if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
-      curSize = Math.max(10, fontSize - 4);
+      currentFontSize = Math.max(10, fontSize - 4);
     }
-    width += (glyph.advanceWidth || font.unitsPerEm) * curSize / font.unitsPerEm;
+    width += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
   }
   return width;
 }
@@ -96,11 +127,10 @@ export function generateTextSVG(
   isBold: boolean = false
 ) {
   const isQiji = preferredFamily.includes('Qiji');
-  const lineHeightMult = 1.35;
+  const lineHeightMult = 1.4;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
   
-  // Calculate inner width based on padding
   const innerMaxWidth = containerWidth - padding.left - padding.right - 4;
 
   for (const p of paragraphs) {
@@ -115,7 +145,6 @@ export function generateTextSVG(
   }
 
   const contentHeight = lines.length * fontSize * lineHeightMult;
-  // Center content vertically within the INNER box
   const innerHeight = containerHeight - padding.top - padding.bottom;
   const startY = padding.top + (innerHeight - contentHeight) / 2;
   
@@ -123,35 +152,37 @@ export function generateTextSVG(
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily, isBold);
-    const yBaseline = startY + (idx + 0.82) * fontSize * lineHeightMult;
+    const yBaseline = startY + (idx + 0.85) * fontSize * lineHeightMult;
     let x = padding.left + ((align === 'center') ? (innerMaxWidth - lineWidth) / 2 : 0);
     
     for (const char of line) {
       const font = getBestFont(char, preferredFamily, isBold);
       const glyph = font.charToGlyph(char);
-      let curSize = fontSize; let yOff = 0;
       
+      let currentFontSize = fontSize;
+      let yOffset = 0;
       if (isQiji && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
-        curSize = Math.max(10, fontSize - 4); yOff = 2;
+        currentFontSize = Math.max(10, fontSize - 4);
+        yOffset = 2; 
       }
 
-      const path = glyph.getPath(x, yBaseline + yOff, curSize);
+      const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
       const isNativeBold = (font === fontSerifBold || font === fontSansBold);
       const isNoto = font === fontSerif || font === fontSerifBold || font === fontSans || font === fontSansBold;
       
-      const pathData = path.toPathData(4);
-      let sw = 0.38;
+      // Increased stroke-width to prevent thinning in high-res PNG
+      // Regular: 0.5px (up from 0.38), Bold: 1.2px (up from 1.0)
+      let sw = 0.5;
       if (isBold) {
-        sw = isNativeBold ? 0.05 : 0.95;
+        sw = isNativeBold ? 0.3 : 1.2;
       } else {
-        sw = isNoto ? 0.15 : 0.42;
+        sw = isNoto ? 0.2 : 0.5;
       }
 
-      pathElements.push(`<path d="${pathData}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
-      x += (glyph.advanceWidth || font.unitsPerEm) * curSize / font.unitsPerEm;
+      pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
+      x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
   });
 
-  // Return SVG that fits the container EXACTLY without fixed pixel dimensions to avoid scaling issues
   return `<svg viewBox="0 0 ${containerWidth} ${containerHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
 }
