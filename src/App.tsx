@@ -98,8 +98,7 @@ function App() {
 
   // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiP1"').catch(() => {});
-    document.fonts.load('1em "QijiP2"').catch(() => {});
+    document.fonts.load('1em "QijiCombo"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
@@ -109,10 +108,7 @@ function App() {
     const isQiji = s.theme.fontFamily.includes('Qiji');
     if (isQiji) {
       setIsFontLoading(true);
-      Promise.all([
-        document.fonts.load('1em "QijiP1"'),
-        document.fonts.load('1em "QijiP2"')
-      ]).finally(() => setIsFontLoading(false));
+      document.fonts.load('1em "QijiCombo"').finally(() => setIsFontLoading(false));
     } else {
       const isHuiwen = s.theme.fontFamily.includes('Huiwen');
       if (isHuiwen) {
@@ -136,7 +132,7 @@ function App() {
     if (s.theme.fontFamily) {
       let family = s.theme.fontFamily.split('|')[0];
       if (family.includes('Qiji')) {
-        family = '"QijiP1", "QijiP2", "HuiwenMincho", serif';
+        family = '"QijiCombo", "HuiwenMincho", serif';
       } else if (family.includes('Huiwen')) {
         family = '"HuiwenMincho", serif';
       }
@@ -152,18 +148,19 @@ function App() {
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
     try {
-      await Promise.all([
-        document.fonts.load('1em "QijiP1"'),
-        document.fonts.load('1em "QijiP2"'),
-        document.fonts.load('1em "HuiwenMincho"')
-      ]);
+      // Preloading: Wait for BOTH parts by loading "1em QijiCombo" and checking document.fonts.ready
+      await document.fonts.load('1em QijiCombo');
       await document.fonts.ready;
       
-      const isQiji = s.theme.fontFamily.includes('Qiji');
-      if (isQiji) {
-        // Add 1000ms delay for OS to rasterize font if Qiji is selected
-        await new Promise(r => setTimeout(r, 1000));
+      // HARDENING: Pre-warming Step
+      // Force browser to render all glyphs before capture
+      const offscreen = document.createElement('canvas');
+      const ctx = offscreen.getContext('2d');
+      if (ctx) {
+        ctx.font = '10px QijiCombo';
+        ctx.fillText('测试生僻字和常用字', 0, 0); 
       }
+      await new Promise(r => setTimeout(r, 1200)); // Give ample time for rasterization
 
       if (zoom !== 1) await new Promise(r => setTimeout(r, 400));
       const original = canvasRef.current;
@@ -231,7 +228,7 @@ function App() {
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
                     <option value='"HuiwenMincho", serif'>汇文明朝体</option>
-                    <option value='"QijiP1", serif'>齐伋体</option>
+                    <option value='"QijiCombo", serif'>齐伋体 (QijiCombo)</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
@@ -300,7 +297,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                  <div className="text-blue-300 text-[11px]">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -308,7 +305,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">与上方素材距离</div>
+                  <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -323,7 +320,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                  <div className="text-blue-300 text-[11px]">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -331,7 +328,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">与上方素材距离</div>
+                  <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -347,7 +344,7 @@ function App() {
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                    <div className="text-blue-300 text-[11px]">字体调节</div>
                     <div className="flex items-center gap-2">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -355,7 +352,7 @@ function App() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-blue-200 text-[13px] font-bold ml-0.5">与上方素材距离</div>
+                    <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
                     <div className="flex items-center gap-2">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -376,7 +373,16 @@ function App() {
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Columns className="w-4 h-4" /> 布局细节</h2>
             <div className="space-y-1">
-              <div className="flex justify-between items-center py-1"><span className="text-[13px] font-bold text-gray-200 uppercase">格子比例</span><select className="bg-[#2a2a2a] text-white p-1 rounded-lg outline-none text-xs font-bold border border-[#333]" value={s.theme.boxAspectRatio} onChange={(e) => s.setTheme({ boxAspectRatio: e.target.value })}><option value="1/1">1:1</option><option value="3/4">3:4</option><option value="4/3">4:3</option><option value="9/16">9:16</option><option value="custom">自定义</option></select></div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[13px] font-bold text-gray-200 uppercase">格子比例</span>
+                <select className="bg-[#2a2a2a] text-white p-1 rounded-lg outline-none text-xs font-bold border border-[#333]" value={s.theme.boxAspectRatio} onChange={(e) => s.setTheme({ boxAspectRatio: e.target.value })}>
+                  <option value="1/1">1:1</option>
+                  <option value="3/4">3:4</option>
+                  <option value="4/3">4:3</option>
+                  <option value="9/16">9:16</option>
+                  <option value="custom">自定义</option>
+                </select>
+              </div>
               {[
                 { label: '格子宽', key: 'boxBaseWidth', min: 50, max: 800 },
                 { label: '格子列间距', key: 'gridGap', min: 0, max: 150, global: true },

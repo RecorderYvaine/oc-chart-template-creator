@@ -1,21 +1,20 @@
 @import "tailwindcss";
 
-/* 齐伋体分片1 (16MB) - 常用字区间 */
+/* 统一族名 QijiCombo - 让截图引擎视其为单一实体 */
 @font-face {
-  font-family: 'QijiP1';
+  font-family: 'QijiCombo';
   src: url('/qiji-part1.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
-/* 齐伋体分片2 (24MB) - 生僻字区间 */
 @font-face {
-  font-family: 'QijiP2';
+  font-family: 'QijiCombo';
   src: url('/qiji-part2.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @font-face {
@@ -23,7 +22,7 @@
   src: url('/huiwen-mincho.otf');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 @theme {
