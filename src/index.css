@@ -1,30 +1,5 @@
 @import "tailwindcss";
 
-/* 统一族名 QijiCombo - 让截图引擎视其为单一实体 */
-@font-face {
-  font-family: 'QijiCombo';
-  src: url('/qiji-part1.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: 'QijiCombo';
-  src: url('/qiji-part2.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: 'HuiwenMincho';
-  src: url('/huiwen-mincho.otf');
-  font-weight: normal;
-  font-style: normal;
-  font-display: block;
-}
-
 @theme {
   --color-oc-bg: var(--oc-bg, #111111);
   --color-oc-text: var(--oc-text, #ffffff);

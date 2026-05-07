@@ -6,7 +6,6 @@ import {
   X, Search, ZoomIn, ZoomOut, RotateCcw 
 } from 'lucide-react';
 import { domToPng } from 'modern-screenshot';
-import { qijiBase64 } from './fontData';
 
 const isLightColor = (color: string) => {
   const hex = color.replace('#', '');
@@ -99,25 +98,27 @@ function App() {
 
   // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiCombo"').catch(() => {});
-    document.fonts.load('1em "HuiwenMincho"').catch(() => {});
+    document.fonts.load('1em "QijiP1"').catch(() => {});
+    document.fonts.load('1em "QijiP2"').catch(() => {});
+    document.fonts.load('1em "Huiwen"').catch(() => {});
   }, []);
 
   // Font loading state management
   useEffect(() => {
     if (!s.theme) return;
-    const isQiji = s.theme.fontFamily.includes('Qiji');
-    if (isQiji) {
+    const family = s.theme.fontFamily;
+    if (family.includes('Qiji')) {
       setIsFontLoading(true);
-      document.fonts.load('1em "QijiCombo"').finally(() => setIsFontLoading(false));
+      Promise.all([
+        document.fonts.load('1em "QijiP1"'),
+        document.fonts.load('1em "QijiP2"'),
+        document.fonts.load('1em "Huiwen"')
+      ]).finally(() => setIsFontLoading(false));
+    } else if (family.includes('Huiwen')) {
+      setIsFontLoading(true);
+      document.fonts.load('1em "Huiwen"').finally(() => setIsFontLoading(false));
     } else {
-      const isHuiwen = s.theme.fontFamily.includes('Huiwen');
-      if (isHuiwen) {
-        setIsFontLoading(true);
-        document.fonts.load('1em "HuiwenMincho"').finally(() => setIsFontLoading(false));
-      } else {
-        setIsFontLoading(false);
-      }
+      setIsFontLoading(false);
     }
   }, [s.theme.fontFamily]);
 
@@ -131,13 +132,7 @@ function App() {
     r.style.setProperty('--oc-border-width', `${s.theme.borderWidth}px`);
     r.style.setProperty('--oc-box-bg', s.theme.boxBgColor);
     if (s.theme.fontFamily) {
-      let family = s.theme.fontFamily.split('|')[0];
-      if (family.includes('Qiji')) {
-        family = '"QijiCombo", "HuiwenMincho", serif';
-      } else if (family.includes('Huiwen')) {
-        family = '"HuiwenMincho", serif';
-      }
-      r.style.setProperty('--oc-font', family);
+      r.style.setProperty('--oc-font', s.theme.fontFamily);
       const isCustomFamily = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
       r.style.setProperty('--oc-font-weight', isCustomFamily ? 'normal' : 'bold');
     }
@@ -149,24 +144,22 @@ function App() {
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
     try {
-      await document.fonts.load('1em QijiCombo');
+      // Wait for ALL three fonts
+      await Promise.all([
+        document.fonts.load('1em QijiP1'),
+        document.fonts.load('1em QijiP2'),
+        document.fonts.load('1em Huiwen')
+      ]);
       await document.fonts.ready;
       
-      const offscreen = document.createElement('canvas');
-      const ctx = offscreen.getContext('2d');
-      if (ctx) {
-        ctx.font = '10px QijiCombo';
-        ctx.fillText('测试渲染', 0, 0); 
-      }
-      
-      // Wait 1000ms as requested
-      await new Promise(r => setTimeout(r, 1000));
+      // Intelligent delay for heavy glyphs
+      const isQiji = s.theme.fontFamily.includes('Qiji');
+      await new Promise(r => setTimeout(r, isQiji ? 2000 : 500));
 
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      // Short delay for visibility change
       await new Promise(r => setTimeout(r, 200));
 
       const dataUrl = await domToPng(original, { 
@@ -174,7 +167,6 @@ function App() {
         backgroundColor: 'rgba(0,0,0,0)', 
         width: original.offsetWidth,
         height: original.offsetHeight,
-        // fontEmbedCSS removed as requested
       });
 
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
@@ -210,30 +202,6 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#1a1a1a] text-gray-300 font-sans overflow-hidden text-[15px]">
-      <style>{`
-        @font-face {
-          font-family: 'QijiCombo';
-          src: url('/qiji-part1.ttf') format('truetype');
-          font-weight: normal;
-          font-style: normal;
-          font-display: swap;
-        }
-        @font-face {
-          font-family: 'QijiCombo';
-          src: url('/qiji-part2.ttf') format('truetype');
-          font-weight: normal;
-          font-style: normal;
-          font-display: swap;
-        }
-        @font-face {
-          font-family: 'QijiCombo';
-          src: url(data:font/woff2;base64,${qijiBase64}) format('woff2');
-          font-weight: normal;
-          font-style: normal;
-          font-display: block;
-        }
-      `}</style>
-
       {/* Preview Modal */}
       {previewUrl && (
         <div className={`fixed inset-0 z-[100] ${isLightColor(s.theme.bgColor) ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
@@ -260,8 +228,8 @@ function App() {
                 <div className="relative group/select">
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
-                    <option value='"HuiwenMincho", serif'>汇文明朝体</option>
-                    <option value='"QijiCombo", serif'>齐伋体 (QijiCombo)</option>
+                    <option value='"Huiwen", serif'>汇文明朝体</option>
+                    <option value='"QijiP1", "QijiP2", "Huiwen", serif'>齐伋体 (Qiji)</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
@@ -451,6 +419,20 @@ function App() {
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
+            <style>{`
+              @font-face {
+                font-family: 'QijiP1';
+                src: url('${window.location.origin}/qiji-part1.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'QijiP2';
+                src: url('${window.location.origin}/qiji-part2.ttf') format('truetype');
+              }
+              @font-face {
+                font-family: 'Huiwen';
+                src: url('${window.location.origin}/huiwen-mincho.otf') format('opentype');
+              }
+            `}</style>
             <PunchHoleBackground containerRef={canvasRef} bgColor={s.theme.bgColor} isTransparent={s.theme.isTransparentBg} zoom={zoom} rowCount={s.rows.length} colCount={maxItemsCount} containerWidth={s.containerWidth} />
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
