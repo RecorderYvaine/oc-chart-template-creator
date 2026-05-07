@@ -497,7 +497,7 @@ function App() {
               <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
               <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.subtitleSize}px`, fontWeight: 'normal' }}>
                 <input className="bg-transparent outline-none placeholder-gray-800 text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
-                <input className="bg-transparent outline-none placeholder-gray-800 text-left w-1/2 block ml-16 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />
+                <input className="bg-transparent outline-none placeholder-gray-800 text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />
               </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
