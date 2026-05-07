@@ -1,14 +1,24 @@
 @import "tailwindcss";
 
+/* 1. 齐伋体-精华包 (3.6MB, 包含5000常用字) */
 @font-face {
-  font-family: 'QijiCombo';
-  src: url('/qiji-lite.woff2') format('woff2'),
-       url('https://raw.githubusercontent.com/RecorderYvaine/oc-chart-template-creator/274266c/public/qiji-combo.ttf') format('truetype');
+  font-family: 'QijiLite';
+  src: url('/qiji-lite.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
+/* 2. 齐伋体-全量包 (39MB, 包含所有生僻字) */
+@font-face {
+  font-family: 'QijiFull';
+  src: url('https://raw.githubusercontent.com/RecorderYvaine/oc-chart-template-creator/274266c/public/qiji-combo.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 3. 汇文明朝体 (23MB, 作为生僻字的第一级降级) */
 @font-face {
   font-family: 'HuiwenMincho';
   src: url('/huiwen-mincho.otf');

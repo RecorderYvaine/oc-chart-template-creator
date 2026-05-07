@@ -47,8 +47,7 @@ function PunchHoleBackground({ containerRef, bgColor, isTransparent, zoom, rowCo
         let x = 0; let y = 0;
         let current: HTMLElement | null = target;
         while (current && current !== parent) {
-          x += current.offsetLeft;
-          y += current.offsetTop;
+          x += current.offsetLeft; y += current.offsetTop;
           current = current.offsetParent as HTMLElement;
         }
         const bw = target.offsetWidth; 
@@ -97,23 +96,28 @@ function App() {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
+  // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiCombo"').catch(() => {});
+    document.fonts.load('1em "QijiLite"').catch(() => {});
+    document.fonts.load('1em "QijiFull"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
+  // Font loading state management
   useEffect(() => {
     if (!s.theme) return;
     const isCustom = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
     if (isCustom) {
       setIsFontLoading(true);
-      const name = s.theme.fontFamily.includes('Qiji') ? 'QijiCombo' : 'HuiwenMincho';
+      // We track the heaviest part of the selected stack (Full Qiji or Huiwen)
+      const name = s.theme.fontFamily.includes('Qiji') ? 'QijiFull' : 'HuiwenMincho';
       document.fonts.load(`1em "${name}"`).then(() => setIsFontLoading(false)).catch(() => setIsFontLoading(false));
     } else {
       setIsFontLoading(false);
     }
   }, [s.theme.fontFamily]);
 
+  // Sync theme to CSS variables
   useEffect(() => {
     if (!s.theme) return;
     const r = document.documentElement;
@@ -123,10 +127,17 @@ function App() {
     r.style.setProperty('--oc-border-width', `${s.theme.borderWidth}px`);
     r.style.setProperty('--oc-box-bg', s.theme.boxBgColor);
     if (s.theme.fontFamily) {
-      const family = s.theme.fontFamily.split('|')[0];
+      let family = s.theme.fontFamily.split('|')[0];
+      // Tiered Fallback: If Qiji is selected, use Lite for speed, Full for completeness,
+      // and Huiwen as a reliable bridge while Full is downloading.
+      if (family.includes('Qiji')) {
+        family = '"QijiLite", "QijiFull", "HuiwenMincho", serif';
+      } else if (family.includes('Huiwen')) {
+        family = '"HuiwenMincho", serif';
+      }
       r.style.setProperty('--oc-font', family);
-      const isCustom = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
-      r.style.setProperty('--oc-font-weight', isCustom ? 'normal' : 'bold');
+      const isCustomFamily = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
+      r.style.setProperty('--oc-font-weight', isCustomFamily ? 'normal' : 'bold');
     }
   }, [s.theme]);
 
@@ -142,12 +153,7 @@ function App() {
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       await new Promise(r => setTimeout(r, 800));
-      const dataUrl = await domToPng(original, { 
-        scale: 3, 
-        backgroundColor: 'rgba(0,0,0,0)', 
-        width: original.offsetWidth, 
-        height: original.offsetHeight 
-      });
+      const dataUrl = await domToPng(original, { scale: 3, backgroundColor: 'rgba(0,0,0,0)', width: original.offsetWidth, height: original.offsetHeight });
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
       setPreviewUrl(dataUrl);
     } catch (err: any) { alert(`预览生成失败: ${err.message}`); } finally { 
@@ -228,8 +234,8 @@ function App() {
                 <div className="flex flex-col"><span className="text-[13px] font-bold text-gray-200">格子填充</span><span className="text-[10px] text-gray-500">隐藏即显示背景色</span></div>
                 <div className="flex items-center gap-3">
                   <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
-                  <button onClick={() => s.setTheme({ showGridFill: !s.theme.showGridFill })} className={`p-1 rounded-lg transition-colors ${!s.theme.showGridFill ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
-                    {!s.theme.showGridFill ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <button onClick={() => s.setTheme({ showGridFill: !s.theme.showGridFill })} className={`p-1 rounded-lg transition-colors ${s.theme.showGridFill ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                    {s.theme.showGridFill ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -241,7 +247,7 @@ function App() {
                 <span className="text-[13px] font-bold text-gray-200 uppercase">外框线颜色</span>
                 <div className="flex items-center gap-3">
                   <input type="color" value={s.theme.borderColor} onChange={(e) => s.setTheme({ borderColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
-                  <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1 rounded-lg transition-colors ${!s.theme.showBoxBorder ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
+                  <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1 rounded-lg transition-colors ${s.theme.showBoxBorder ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                     {!s.theme.showBoxBorder ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -258,7 +264,7 @@ function App() {
             <div className="space-y-1">
               {[{l:'主标题',k:'titleSize',m:200},{l:'副标题',k:'subtitleSize',m:100}].map(item => (
                 <div key={item.k} className="flex items-center gap-3 py-1">
-                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-100">{item.l}</span>
+                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-200">{item.l}</span>
                   <input type="range" min="10" max={item.m} value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                   <input type="number" value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[12px] rounded p-1 text-gray-100" />
                 </div>
