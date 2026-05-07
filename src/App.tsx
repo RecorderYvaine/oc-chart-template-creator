@@ -243,9 +243,9 @@ function App() {
                     value={s.theme.fontFamily} 
                     onChange={(e) => s.setTheme({ fontFamily: e.target.value })}
                   >
-                    <option value='"Noto Serif SC", serif'>思源宋体 (默认)</option>
-                    <option value='"HuiwenMincho", serif'>汇文明朝体 (新)</option>
-                    <option value='"QijiCombo", serif'>齐伋体 (Qiji-Combo)</option>
+                    <option value='"Noto Serif SC", serif'>思源宋体</option>
+                    <option value='"HuiwenMincho", serif'>汇文明朝体</option>
+                    <option value='"QijiCombo", serif'>齐伋体</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -264,13 +264,9 @@ function App() {
                   <span className="text-[13px] font-bold text-gray-200">总背景颜色</span>
                   <input type="color" value={s.theme.bgColor} onChange={(e) => s.setTheme({ bgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[13px] font-bold text-gray-200">文字颜色</span>
-                  <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
-                </div>
                 
                 {/* 格子填充 */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-[13px] font-bold text-gray-200 uppercase">格子填充</span>
                   <div className="flex items-center gap-3">
                     <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
@@ -280,18 +276,15 @@ function App() {
                   </div>
                 </div>
 
-                {/* 镂空透明 */}
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-[13px] font-bold text-gray-200 uppercase">镂空透明 (导出透明孔)</span>
-                  </div>
-                  <button onClick={() => s.setTheme({ isTransparentBg: !s.theme.isTransparentBg })} className={`p-1.5 rounded-lg transition-colors ${s.theme.isTransparentBg ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
-                    {s.theme.isTransparentBg ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                {/* 透明格子 */}
+                <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
+                  <span className="text-[13px] font-bold text-gray-200 uppercase">透明格子</span>
+                  <input type="checkbox" checked={s.theme.isTransparentBg === true} onChange={(e) => s.setTheme({ isTransparentBg: e.target.checked })} className="w-4 h-4 cursor-pointer accent-blue-500" />
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <span className="text-[13px] font-bold text-gray-200 uppercase">外框线</span>
+                {/* 外框线 */}
+                <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
+                  <span className="text-[13px] font-bold text-gray-200 uppercase">外框线颜色</span>
                   <div className="flex items-center gap-3">
                     <input type="color" value={s.theme.borderColor} onChange={(e) => s.setTheme({ borderColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
                     <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1.5 rounded-lg transition-colors ${!s.theme.showBoxBorder ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
@@ -314,7 +307,7 @@ function App() {
             </div>
           </section>
 
-          {/* Section: Title Management */}
+          {/* Section: Global Title Controls */}
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">全局标题调节</h2>
             <div className="space-y-2">
@@ -339,12 +332,12 @@ function App() {
           <section className="space-y-4">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
             <div className="space-y-4">
-              {/* Row 1: Grid Title */}
+              {/* Grid Title Row */}
               <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
-                  <span>格子标题行 (固定)</span>
+                <div className="flex justify-between items-center text-[13px] font-bold text-blue-200 uppercase">
+                  <span>格子标题</span>
                   <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded-md transition-colors ${!s.theme.showGridTitle ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
-                    {!s.theme.showGridTitle ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {!s.theme.showGridTitle ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -354,12 +347,12 @@ function App() {
                 </div>
               </div>
 
-              {/* Row 2: Grid Subtitle */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
-                  <span>格子副标题行 (固定)</span>
+              {/* Grid Subtitle Row */}
+              <div className="space-y-1.5 border-t border-white/5 pt-2">
+                <div className="flex justify-between items-center text-[13px] font-bold text-blue-200 uppercase">
+                  <span>格子小字</span>
                   <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded-md transition-colors ${!s.theme.showGridSubtitle ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
-                    {!s.theme.showGridSubtitle ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {!s.theme.showGridSubtitle ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -369,26 +362,27 @@ function App() {
                 </div>
               </div>
 
-              {/* Dynamic Rows: Extra Descriptions */}
+              {/* Dynamic Extra Lines */}
               {extraLineIndices.map(idx => {
+                const line = s.rows[0]?.items[0]?.extraLines?.[idx];
                 const isHidden = s.rows.every(r => r.items.every(i => i.extraLines?.[idx]?.hidden));
                 return (
-                  <div key={idx} className="space-y-1.5 group/dynamic">
-                    <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
+                  <div key={idx} className="space-y-1.5 border-t border-white/5 pt-2">
+                    <div className="flex justify-between items-center text-[13px] font-bold text-blue-200 uppercase">
                       <span>额外描述行 {idx + 1}</span>
                       <div className="flex items-center gap-2">
                         <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded-md transition-colors ${isHidden ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
-                          {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                         <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="p-1 text-gray-500 hover:text-red-400 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                      <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer rounded" />
-                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[11px] rounded p-1" />
+                      <input type="range" min="10" max={100} value={line?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                      <input type="color" value={line?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer rounded" />
+                      <input type="number" value={line?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[11px] rounded p-1" />
                     </div>
                   </div>
                 );
@@ -545,8 +539,7 @@ function App() {
 
                       return (
                         <div key={item.id} className="flex flex-col relative group/box transition-all duration-300" style={{ flex: row.fillWidth ? '1 1 0%' : 'none', width: row.fillWidth ? 'auto' : `${s.theme.boxBaseWidth}px` }}>
-                          {/* Box Tooltip Controls */}
-                          <div className="no-export absolute top-2 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/box:opacity-100 transition-opacity z-20 bg-[#1a1a1a]/95 backdrop-blur-md p-1.5 rounded-xl border border-[#333] items-center text-[10px] shadow-2xl min-w-max">
+                          <div className="no-export absolute top-2 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/box:opacity-100 transition-opacity z-20 bg-[#1a1a1a]/95 backdrop-blur-md p-1.5 rounded-xl border border-[#333] items-center text-[10px] shadow-2xl min-w-max transition-all">
                             <button onClick={() => s.updateItem(row.id, item.id, { showSubtitle: !item.showSubtitle })} className="text-gray-400 hover:text-white px-1">
                               {item.showSubtitle === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
@@ -556,34 +549,26 @@ function App() {
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
 
-                          {/* The Grid Box */}
                           <div 
                             className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} 
                             style={{ 
                               height: `${fixedHeight}px`, 
                               border: (s.theme.showBoxBorder && s.theme.borderWidth > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', 
-                              backgroundColor: s.theme.showGridFill ? s.theme.boxBgColor : 'transparent' 
+                              backgroundColor: s.theme.isTransparentBg ? 'transparent' : (s.theme.showGridFill ? s.theme.boxBgColor : 'transparent')
                             }}
                           >
                             <textarea 
                               className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" 
                               style={{ 
                                 fontFamily: 'var(--oc-font)', 
-                                color: s.theme.showGridFill ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor
+                                color: (!s.theme.isTransparentBg && s.theme.showGridFill) ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor
                               }} 
                               value={item.content} 
                               onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} 
                             />
                           </div>
 
-                          {/* Descriptions Below the Box */}
-                          <div 
-                            className="text-center flex flex-col items-center transition-all duration-300" 
-                            style={{ 
-                              marginTop: `${(item.textOffsetY || 0) + s.theme.textMarginTop}px`, 
-                              gap: `${s.theme.titleSubtitleGap}px` 
-                            }}
-                          >
+                          <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${(item.textOffsetY || 0) + s.theme.textMarginTop}px`, gap: `${s.theme.titleSubtitleGap}px` }}>
                             {s.theme.showGridTitle !== false && (
                               <div className="relative w-full group/label">
                                 <div className="no-export absolute -left-14 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
@@ -591,25 +576,9 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea 
-                                  className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" 
-                                  rows={1} 
-                                  style={{ 
-                                    fontFamily: 'var(--oc-font)', 
-                                    color: item.titleColor || s.theme.textColor, 
-                                    fontSize: `${currentTitleSize}px`, 
-                                    fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', 
-                                    WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.5px currentColor' : '0', 
-                                    lineHeight: 1.1 
-                                  }} 
-                                  value={item.title} 
-                                  onInput={handleAutoResize} 
-                                  onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} 
-                                  placeholder="格子标题" 
-                                />
+                                <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${currentTitleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.5px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={handleAutoResize} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
                               </div>
                             )}
-
                             {(s.theme.showGridSubtitle !== false && item.showSubtitle !== false) && (
                               <div className="relative w-full group/label">
                                 <div className="no-export absolute -left-14 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
@@ -617,24 +586,9 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea 
-                                  className="w-full text-center bg-transparent outline-none opacity-80 resize-none overflow-hidden block p-0" 
-                                  rows={1} 
-                                  style={{ 
-                                    fontFamily: 'var(--oc-font)', 
-                                    color: item.subtitleColor || s.theme.textColor, 
-                                    fontSize: `${currentSubtitleSize}px`, 
-                                    fontWeight: 'normal', 
-                                    lineHeight: 1.2 
-                                  }} 
-                                  value={item.subtitle} 
-                                  onInput={handleAutoResize} 
-                                  onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} 
-                                  placeholder="格子小字" 
-                                />
+                                <textarea className="w-full text-center bg-transparent outline-none opacity-80 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${currentSubtitleSize}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onInput={handleAutoResize} onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} placeholder="格子小字" />
                               </div>
                             )}
-
                             {item.extraLines?.map((line, lineIndex) => {
                               if (line.hidden) return null;
                               return (
@@ -645,20 +599,7 @@ function App() {
                                      <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
                                      <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
                                   </div>
-                                  <textarea 
-                                    className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" 
-                                    rows={1} 
-                                    style={{ 
-                                      fontFamily: 'var(--oc-font)', 
-                                      color: line.color || s.theme.textColor, 
-                                      fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, 
-                                      fontWeight: 'normal' 
-                                    }} 
-                                    value={line.text} 
-                                    onInput={handleAutoResize} 
-                                    onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} 
-                                    placeholder={`描述行 ${lineIndex + 1}`} 
-                                  />
+                                  <textarea className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onInput={handleAutoResize} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} placeholder={`描述行 ${lineIndex + 1}`} />
                                 </div>
                               );
                             })}
@@ -671,20 +612,12 @@ function App() {
               </div>
             </div>
           </div>
-          
           <div className="no-export flex justify-center mt-12 mb-20">
-            <button 
-              onClick={s.addRow} 
-              className="group flex items-center gap-3 bg-[#222] hover:bg-blue-600 border border-[#444] hover:border-blue-500 text-gray-400 hover:text-white px-12 py-4 rounded-full transition-all shadow-2xl font-bold uppercase tracking-widest text-sm"
-            >
-              <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
-              <span>添加新行</span>
-            </button>
+            <button onClick={s.addRow} className="group flex items-center gap-3 bg-[#222] hover:bg-blue-600 border border-[#444] hover:border-blue-500 text-gray-400 hover:text-white px-12 py-4 rounded-full transition-all shadow-2xl font-bold uppercase tracking-widest text-sm"><Plus className="w-5 h-5 transition-transform group-hover:rotate-90" /><span>添加新行</span></button>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
 export default App;
