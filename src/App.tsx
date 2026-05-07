@@ -108,10 +108,9 @@ function App() {
     const isQiji = s.theme.fontFamily.includes('Qiji');
     if (isQiji) {
       setIsFontLoading(true);
-      Promise.all([
-        document.fonts.load('1em "QijiCombo"'),
-        document.fonts.load('1em "HuiwenMincho"')
-      ]).finally(() => setIsFontLoading(false));
+      document.fonts.load('1em "QijiCombo"')
+        .then(() => setIsFontLoading(false))
+        .catch(() => setIsFontLoading(false));
     } else {
       const isHuiwen = s.theme.fontFamily.includes('Huiwen');
       if (isHuiwen) {
@@ -154,8 +153,6 @@ function App() {
       await document.fonts.ready;
       
       const isQiji = s.theme.fontFamily.includes('Qiji');
-      document.fonts.check('1em QijiCombo'); // Verification step
-      
       if (isQiji) {
         // Add 1000ms delay for OS to rasterize font if Qiji is selected
         await new Promise(r => setTimeout(r, 1000));
@@ -200,23 +197,6 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#1a1a1a] text-gray-300 font-sans overflow-hidden text-[15px]">
-      <style>{`
-        @font-face {
-          font-family: 'QijiCombo';
-          src: url('${window.location.origin}/qiji-part1.ttf') format('truetype');
-          unicode-range: U+0000-6FFF;
-        }
-        @font-face {
-          font-family: 'QijiCombo';
-          src: url('${window.location.origin}/qiji-part2.ttf') format('truetype');
-          unicode-range: U+7000-FFFF;
-        }
-        @font-face {
-          font-family: 'HuiwenMincho';
-          src: url('${window.location.origin}/huiwen-mincho.otf') format('opentype');
-        }
-      `}</style>
-
       {/* Preview Modal */}
       {previewUrl && (
         <div className={`fixed inset-0 z-[100] ${isLightColor(s.theme.bgColor) ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
@@ -320,13 +300,15 @@ function App() {
                     <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-blue-200 text-[13px] font-bold shrink-0 w-24">与上方素材距离</span>
-                  <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                  <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
-                  <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
-                    {s.theme.showGridTitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
+                <div className="space-y-1">
+                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">与上方素材距离</div>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                    <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
+                      {s.theme.showGridTitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -341,13 +323,15 @@ function App() {
                     <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-blue-200 text-[13px] font-bold shrink-0 w-24">与上方素材距离</span>
-                  <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                  <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
-                  <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
-                    {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
+                <div className="space-y-1">
+                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">与上方素材距离</div>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                    <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
+                      {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -363,16 +347,18 @@ function App() {
                       <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-blue-200 text-[13px] font-bold shrink-0 w-24">与上方素材距离</span>
-                    <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                    <input type="number" value={s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
-                    <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
-                      {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                    <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="p-1 text-gray-500 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div className="space-y-1">
+                    <div className="text-blue-200 text-[13px] font-bold ml-0.5">与上方素材距离</div>
+                    <div className="flex items-center gap-2">
+                      <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                      <input type="number" value={s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                      <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
+                        {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
+                      <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="p-1 text-gray-500 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
