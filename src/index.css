@@ -1,33 +1,5 @@
 @import "tailwindcss";
 
-/* 齐伋体分片1 (16MB) - 0000-6FFF 范围 */
-@font-face {
-  font-family: 'QijiCombo';
-  src: url('/qiji-part1.ttf') format('truetype');
-  unicode-range: U+0000-6FFF;
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* 齐伋体分片2 (24MB) - 7000-FFFF 范围 */
-@font-face {
-  font-family: 'QijiCombo';
-  src: url('/qiji-part2.ttf') format('truetype');
-  unicode-range: U+7000-FFFF;
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'HuiwenMincho';
-  src: url('/huiwen-mincho.otf');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
 @theme {
   --color-oc-bg: var(--oc-bg, #111111);
   --color-oc-text: var(--oc-text, #ffffff);
