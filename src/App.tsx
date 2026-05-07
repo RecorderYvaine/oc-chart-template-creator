@@ -103,14 +103,12 @@ function App() {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Preload fonts
   useEffect(() => {
     document.fonts.load('1em "QijiP1"').catch(() => {});
     document.fonts.load('1em "QijiP2"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
-  // Font loading state management
   useEffect(() => {
     if (!s.theme) return;
     const family = s.theme.fontFamily;
@@ -129,7 +127,6 @@ function App() {
     }
   }, [s.theme.fontFamily]);
 
-  // Sync theme to CSS variables
   useEffect(() => {
     if (!s.theme) return;
     const r = document.documentElement;
@@ -154,24 +151,21 @@ function App() {
     setZoom(1);
 
     try {
-      // 1. Initialize vector fonts first
       await initVectorFonts();
       setRenderProgress(10);
       
-      // 2. Wait for layout to settle after zoom change
       await new Promise(r => setTimeout(r, 600));
       setRenderProgress(20);
 
       const canvas = canvasRef.current;
-      
-      // 3. Hide all .no-export elements
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      // 4. Vectorize In-Place with Overlays
       const textElements = canvas.querySelectorAll('textarea, input');
       const overlays: HTMLElement[] = [];
       const hiddenElements: { el: HTMLElement, originalOpacity: string }[] = [];
+
+      const canvasRect = canvas.getBoundingClientRect();
 
       for (let i = 0; i < textElements.length; i++) {
         const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
@@ -185,25 +179,16 @@ function App() {
         const fontSize = parseFloat(style.fontSize);
         const color = style.color;
         const textAlign = (style.textAlign || 'center') as 'left' | 'center';
-        const width = el.offsetWidth;
         const padding = style.padding;
 
-        // Calculate absolute position relative to canvas
-        let left = 0;
-        let top = 0;
-        let curr: HTMLElement | null = el;
-        while (curr && curr !== canvas) {
-          left += curr.offsetLeft;
-          top += curr.offsetTop;
-          curr = curr.offsetParent as HTMLElement;
-        }
+        const elRect = el.getBoundingClientRect();
+        const left = (elRect.left - canvasRect.left) / zoom;
+        const top = (elRect.top - canvasRect.top) / zoom;
 
-        // Title Bold Fix: Check if it's a title element and apply theme bold setting
-        const isTitleElement = el.placeholder === "大标题" || el.placeholder === "格子标题";
-        const isBold = isTitleElement && s.theme.titleBold;
+        const isTitle = el.classList.contains('title-big') || el.classList.contains('title-grid');
+        const isBold = isTitle && s.theme.titleBold;
 
-        // CRITICAL FIX: Pass s.theme.fontFamily and isBold (0.8px stroke logic in generator)
-        const svgString = generateTextSVG(text, fontSize, width, color, textAlign, s.theme.fontFamily, isBold);
+        const svgString = generateTextSVG(text, fontSize, el.offsetWidth, color, textAlign, s.theme.fontFamily, isBold);
         const overlay = document.createElement('div');
         overlay.innerHTML = svgString.trim();
         overlay.style.position = 'absolute';
@@ -227,7 +212,6 @@ function App() {
         el.style.opacity = '0';
       }
 
-      // 5. Capture canvas node
       setRenderProgress(90);
       const dataUrl = await toPng(canvas, { 
         quality: 1, 
@@ -237,11 +221,8 @@ function App() {
       });
       setRenderProgress(100);
 
-      // 6. Cleanup: Remove overlays and restore opacity
       overlays.forEach(o => canvas.removeChild(o));
       hiddenElements.forEach(item => item.el.style.opacity = item.originalOpacity);
-
-      // 7. Restore .no-export
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
 
       setPreviewUrl(dataUrl);
@@ -266,7 +247,6 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#111] text-[#eee] overflow-hidden selection:bg-blue-500/30">
-      {/* Rendering Modal (CRITICAL) */}
       {isGenerating && (
         <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="flex flex-col items-center gap-6">
@@ -284,7 +264,6 @@ function App() {
         </div>
       )}
 
-      {/* Export Preview Modal */}
       {previewUrl && (
         <div className={`fixed inset-0 z-[100] ${previewModalIsLight ? 'bg-white/95' : 'bg-black/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
           <button onClick={() => setPreviewUrl(null)} className={`absolute top-8 right-8 ${previewModalIsLight ? 'text-gray-500 hover:text-black hover:bg-black/5' : 'text-gray-400 hover:text-white hover:bg-white/10'} p-2 rounded-full transition-all`}><X className="w-8 h-8" /></button>
@@ -296,7 +275,6 @@ function App() {
         </div>
       )}
 
-      {/* Sidebar */}
       <div className="w-[340px] border-r border-[#333] bg-[#222] p-5 flex flex-col gap-6 overflow-y-auto shrink-0 z-20 shadow-xl font-sans">
         <div className="flex items-center gap-3"><Layers className="w-6 h-6 text-blue-500" /><h1 className="text-xl font-bold text-white tracking-tighter uppercase">OC 制表工具</h1></div>
         <div className="space-y-6">
@@ -360,7 +338,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
+                  <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -375,7 +353,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
+                  <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -388,11 +366,10 @@ function App() {
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
             <div className="space-y-6 pt-2">
-              {/* Grid Title Row */}
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
+                  <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -411,11 +388,10 @@ function App() {
                 </div>
               </div>
 
-              {/* Grid Subtitle Row */}
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
+                  <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -434,12 +410,11 @@ function App() {
                 </div>
               </div>
 
-              {/* Extra Lines Rows */}
               {extraLineIndices.map(idx => (
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-gray-400 uppercase font-medium">字体调节</div>
+                    <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -502,7 +477,6 @@ function App() {
         </div>
       </div>
 
-      {/* Main Area */}
       <div className="flex-1 overflow-auto p-12 bg-neutral-800 relative scroll-smooth font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
         <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
           <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
@@ -518,7 +492,7 @@ function App() {
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
+                 <textarea className="title-big w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
               </div>
               <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
               <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.subtitleSize}px`, fontWeight: 'normal' }}>
@@ -559,7 +533,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
+                                <textarea className="title-grid w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
                               </div>
                             )}
                             {(s.theme.showGridSubtitle !== false && item.showSubtitle !== false) && (

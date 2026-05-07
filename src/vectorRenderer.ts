@@ -54,15 +54,11 @@ function hasGlyph(font: opentype.Font | null, char: string): boolean {
   } catch { return false; }
 }
 
-/**
- * Returns the best font for a character based on the user's preferred theme font.
- */
 function getBestFont(char: string, preferredFamily: string): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
   const isHuiwenMode = preferredFamily.includes('Huiwen');
   const isSansMode = preferredFamily.includes('Sans');
 
-  // 1. If Qiji mode: P1 -> P2 -> Huiwen
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
@@ -70,21 +66,18 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
     return fontSerif || fontP1 || fontHuiwen!;
   }
 
-  // 2. If Huiwen mode: Huiwen -> Serif
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
     if (hasGlyph(fontSerif, char)) return fontSerif!;
     return fontP1 || fontSans!;
   }
 
-  // 3. If Sans mode: Sans -> Serif
   if (isSansMode) {
     if (hasGlyph(fontSans, char)) return fontSans!;
     if (hasGlyph(fontSerif, char)) return fontSerif!;
     return fontHuiwen!;
   }
 
-  // 4. Default Serif mode: Serif -> P1
   if (hasGlyph(fontSerif, char)) return fontSerif!;
   if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
   return fontP1 || fontP2 || fontHuiwen!;
@@ -95,9 +88,7 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string): 
   for (const char of text) {
     const font = getBestFont(char, preferredFamily);
     const glyph = font.charToGlyph(char);
-    
     let currentFontSize = fontSize;
-    // Smart sizing: commas in Huiwen while using Qiji should be slightly smaller
     if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
       currentFontSize = Math.max(10, fontSize - 4);
     }
@@ -126,13 +117,15 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     if (currentLine) lines.push(currentLine);
   }
 
-  const verticalPadding = fontSize * 1.2; 
+  // HUGE padding to prevent swallowing top/bottom strokes
+  const verticalPadding = fontSize * 1.5; 
   const totalHeight = lines.length * fontSize * lineHeight + verticalPadding;
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily);
-    const yBaseline = (idx + 0.95) * fontSize * lineHeight + (fontSize * 0.3);
+    // Baseline shift to prevent swallowing
+    const yBaseline = (idx + 1) * fontSize * lineHeight + (fontSize * 0.4);
     let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
     
     for (const char of line) {
@@ -141,15 +134,15 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
       
       let currentFontSize = fontSize;
       let yOffset = 0;
-      // Smart Comma Logic: decrease size by 2px and nudge down if it's fallback Huiwen
       if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
         currentFontSize = Math.max(10, fontSize - 4);
         yOffset = 2; 
       }
 
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
-      // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
-      const sw = isBold ? 0.8 : 0.38;
+      // Increased stroke-width to ensure bold text is significantly thicker
+      // 1.0px for bold, 0.4px for regular
+      const sw = isBold ? 1.0 : 0.4;
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
@@ -158,7 +151,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
   return `
     <svg width="${maxWidth}" height="${totalHeight}" viewBox="0 0 ${maxWidth} ${totalHeight}" 
       xmlns="http://www.w3.org/2000/svg" 
-      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.2}px);">
+      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.3}px);">
       ${pathElements.join('')}
     </svg>
   `;
