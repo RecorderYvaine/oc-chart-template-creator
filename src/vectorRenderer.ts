@@ -4,12 +4,14 @@ let fontP1: opentype.Font | null = null;
 let fontP2: opentype.Font | null = null;
 let fontHuiwen: opentype.Font | null = null;
 let fontSerif: opentype.Font | null = null;
+let fontSerifBold: opentype.Font | null = null;
 let fontSans: opentype.Font | null = null;
+let fontSansBold: opentype.Font | null = null;
 let initialized = false;
 
 /**
  * Loads all font files into memory as opentype.js Font objects.
- * We now use ONLY local files to ensure 100% reliability and speed.
+ * Now including both Regular and Bold versions of Noto for perfect rendering.
  */
 export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
@@ -34,14 +36,18 @@ export async function initVectorFonts(onStatus?: (msg: string) => void) {
     fetchFont('/qiji-part2.ttf', '齐伋P2'),
     fetchFont('/huiwen-mincho.otf', '汇文明朝'),
     fetchFont('/noto-serif.ttf', '思源宋体'),
-    fetchFont('/noto-sans.ttf', '思源黑体')
+    fetchFont('/noto-serif-bold.ttf', '思源宋体-粗体'),
+    fetchFont('/noto-sans.ttf', '思源黑体'),
+    fetchFont('/noto-sans-bold.ttf', '思源黑体-粗体')
   ]);
 
   fontP1 = results[0];
   fontP2 = results[1];
   fontHuiwen = results[2];
   fontSerif = results[3];
-  fontSans = results[4];
+  fontSerifBold = results[4];
+  fontSans = results[5];
+  fontSansBold = results[6];
   
   initialized = true;
   if (onStatus) onStatus('');
@@ -54,41 +60,50 @@ function hasGlyph(font: opentype.Font | null, char: string): boolean {
   } catch { return false; }
 }
 
-function getBestFont(char: string, preferredFamily: string): opentype.Font {
+/**
+ * Returns the best font for a character based on the user's preferred theme font and bold state.
+ */
+function getBestFont(char: string, preferredFamily: string, isBold: boolean): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
   const isHuiwenMode = preferredFamily.includes('Huiwen');
   const isSansMode = preferredFamily.includes('Sans');
 
+  // 1. If Qiji mode: P1 -> P2 -> Huiwen (Note: Qiji has no native bold file)
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-    return fontSerif || fontP1 || fontHuiwen!;
+    return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontP1!);
   }
 
+  // 2. If Huiwen mode: Huiwen -> Serif (Note: Huiwen has no native bold file)
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-    if (hasGlyph(fontSerif, char)) return fontSerif!;
-    return fontP1 || fontSans!;
+    return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontP1!);
   }
 
+  // 3. If Sans mode: Use REAL Bold Sans if requested
   if (isSansMode) {
+    if (isBold && fontSansBold && hasGlyph(fontSansBold, char)) return fontSansBold;
     if (hasGlyph(fontSans, char)) return fontSans!;
-    if (hasGlyph(fontSerif, char)) return fontSerif!;
-    return fontHuiwen!;
+    return (isBold && fontSerifBold) ? fontSerifBold : (fontSerif || fontHuiwen!);
   }
 
+  // 4. Default Serif mode: Use REAL Bold Serif if requested
+  if (isBold && fontSerifBold && hasGlyph(fontSerifBold, char)) return fontSerifBold;
   if (hasGlyph(fontSerif, char)) return fontSerif!;
   if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
   return fontP1 || fontP2 || fontHuiwen!;
 }
 
-function measureWidth(text: string, fontSize: number, preferredFamily: string): number {
+function measureWidth(text: string, fontSize: number, preferredFamily: string, isBold: boolean): number {
   let width = 0;
   for (const char of text) {
-    const font = getBestFont(char, preferredFamily);
+    const font = getBestFont(char, preferredFamily, isBold);
     const glyph = font.charToGlyph(char);
+    
     let currentFontSize = fontSize;
+    // Smart sizing for fallback commas
     if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
       currentFontSize = Math.max(10, fontSize - 4);
     }
@@ -107,7 +122,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     let currentLine = "";
     for (const char of p) {
       const testLine = currentLine + char;
-      if (measureWidth(testLine, fontSize, preferredFamily) > safeMaxWidth && currentLine.length > 0) {
+      if (measureWidth(testLine, fontSize, preferredFamily, isBold) > safeMaxWidth && currentLine.length > 0) {
         lines.push(currentLine);
         currentLine = char;
       } else {
@@ -117,19 +132,17 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     if (currentLine) lines.push(currentLine);
   }
 
-  // HUGE padding to prevent swallowing top/bottom strokes
-  const verticalPadding = fontSize * 1.5; 
+  const verticalPadding = fontSize * 1.2; 
   const totalHeight = lines.length * fontSize * lineHeight + verticalPadding;
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
-    const lineWidth = measureWidth(line, fontSize, preferredFamily);
-    // Baseline shift to prevent swallowing
-    const yBaseline = (idx + 1) * fontSize * lineHeight + (fontSize * 0.4);
+    const lineWidth = measureWidth(line, fontSize, preferredFamily, isBold);
+    const yBaseline = (idx + 0.95) * fontSize * lineHeight + (fontSize * 0.3);
     let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
     
     for (const char of line) {
-      const font = getBestFont(char, preferredFamily);
+      const font = getBestFont(char, preferredFamily, isBold);
       const glyph = font.charToGlyph(char);
       
       let currentFontSize = fontSize;
@@ -140,9 +153,15 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
       }
 
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
-      // Increased stroke-width to ensure bold text is significantly thicker
-      // 1.0px for bold, 0.4px for regular
-      const sw = isBold ? 1.0 : 0.4;
+      
+      // LOGIC: If the font is already a BOLD pack, use a very light stroke (0.15) for "ink weight".
+      // If it's a regular pack but bold is requested (like Qiji), use heavy stroke (0.9) to simulate bold.
+      const isNativeBold = (font === fontSerifBold || font === fontSansBold);
+      let sw = 0.38; // Default weight
+      if (isBold) {
+        sw = isNativeBold ? 0.2 : 0.9;
+      }
+
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
@@ -151,7 +170,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
   return `
     <svg width="${maxWidth}" height="${totalHeight}" viewBox="0 0 ${maxWidth} ${totalHeight}" 
       xmlns="http://www.w3.org/2000/svg" 
-      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.3}px);">
+      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.2}px);">
       ${pathElements.join('')}
     </svg>
   `;
