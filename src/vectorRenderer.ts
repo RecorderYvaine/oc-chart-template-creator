@@ -95,7 +95,6 @@ export function generateTextSVG(
   isBold: boolean = false
 ) {
   const isQiji = preferredFamily.includes('Qiji');
-  // Use a balanced line height
   const lineHeightMult = 1.35;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
@@ -113,14 +112,12 @@ export function generateTextSVG(
   }
 
   const contentHeight = lines.length * fontSize * lineHeightMult;
-  // Dynamic vertical center logic
   const startY = (targetHeight - contentHeight) / 2;
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily, isBold);
-    // Move baseline down to prevent top-clipping
-    const yBaseline = startY + (idx + 0.88) * fontSize * lineHeightMult;
+    const yBaseline = startY + (idx + 0.85) * fontSize * lineHeightMult;
     let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
     
     for (const char of line) {
@@ -136,12 +133,8 @@ export function generateTextSVG(
       const isNativeBold = (font === fontSerifBold || font === fontSansBold);
       const isNoto = font === fontSerif || font === fontSerifBold || font === fontSans || font === fontSansBold;
       
-      // Precision 4 is optimal for Noto to prevent path errors.
       const pathData = path.toPathData(4);
       
-      // Stroke Weight logic: 
-      // Noto Serif needs VERY light strokes (0.1) if regular to keep crisp, or 0 if bold.
-      // Qiji needs heavier strokes (0.42/0.95) to maintain the ink-spread calligraphy look.
       let sw = 0.38;
       if (isBold) {
         sw = isNativeBold ? 0.05 : 0.95;
@@ -154,6 +147,7 @@ export function generateTextSVG(
     }
   });
 
-  // Use overflow:visible and a larger viewBox to ensure descenders/flourishes are NEVER cut.
-  return `<svg width="${maxWidth}" height="${targetHeight}" viewBox="-10 -10 ${maxWidth + 20} ${targetHeight + 20}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
+  // Revert viewBox to match width/height exactly to prevent scaling. 
+  // rely on style overflow:visible for bleed.
+  return `<svg width="${maxWidth}" height="${targetHeight}" viewBox="0 0 ${maxWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
 }
