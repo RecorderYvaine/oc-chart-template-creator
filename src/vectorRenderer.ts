@@ -106,7 +106,7 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string): 
   return width;
 }
 
-export function generateTextSVG(text: string, fontSize: number, maxWidth: number, color: string, align: 'left' | 'center' = 'center', preferredFamily: string = "") {
+export function generateTextSVG(text: string, fontSize: number, maxWidth: number, color: string, align: 'left' | 'center' = 'center', preferredFamily: string = "", isBold: boolean = false) {
   const lineHeight = 1.4;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
@@ -149,7 +149,8 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
 
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
       // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
-      pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.38" stroke-linejoin="round" />`);
+      const sw = isBold ? 0.8 : 0.38;
+      pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
   });

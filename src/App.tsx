@@ -148,7 +148,7 @@ function App() {
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); 
-    setExportMessage('正在矢量化捕捉文字...');
+    setExportMessage('正在初始化矢量引擎...');
     
     const originalZoom = zoom;
     setZoom(1);
@@ -158,6 +158,7 @@ function App() {
       await initVectorFonts((msg) => setExportMessage(msg));
       
       // 2. Wait for layout to settle after zoom change
+      setExportMessage('正在捕捉页面布局...');
       await new Promise(r => setTimeout(r, 600));
 
       const canvas = canvasRef.current;
@@ -176,6 +177,8 @@ function App() {
         const text = el.value || el.placeholder || "";
         if (!text) continue;
 
+        setExportMessage(`正在矢量化文字 (${i + 1}/${textElements.length})...`);
+
         const style = window.getComputedStyle(el);
         const fontSize = parseFloat(style.fontSize);
         const color = style.color;
@@ -193,8 +196,12 @@ function App() {
           curr = curr.offsetParent as HTMLElement;
         }
 
-        // CRITICAL FIX: Pass s.theme.fontFamily to ensure font persistence
-        const svgString = generateTextSVG(text, fontSize, width, color, textAlign, s.theme.fontFamily);
+        // Title Bold Fix: Check if it's a title element and apply theme bold setting
+        const isTitleElement = el.placeholder === "大标题" || el.placeholder === "格子标题";
+        const isBold = isTitleElement && s.theme.titleBold;
+
+        // CRITICAL FIX: Pass s.theme.fontFamily and isBold to ensure font persistence and bold state
+        const svgString = generateTextSVG(text, fontSize, width, color, textAlign, s.theme.fontFamily, isBold);
         const overlay = document.createElement('div');
         overlay.innerHTML = svgString.trim();
         overlay.style.position = 'absolute';
@@ -219,6 +226,7 @@ function App() {
       }
 
       // 5. Capture canvas node
+      setExportMessage('正在生成高清图像...');
       const dataUrl = await toPng(canvas, { 
         quality: 1, 
         pixelRatio: 3, 
@@ -334,7 +342,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-blue-300">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -349,7 +357,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-blue-300">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
@@ -366,7 +374,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-blue-300">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -374,7 +382,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[13px] font-bold text-blue-200">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -389,7 +397,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-[11px] text-blue-300">字体调节</div>
+                  <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -397,7 +405,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[13px] font-bold text-blue-200">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -413,7 +421,7 @@ function App() {
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-[11px] text-blue-300">字体调节</div>
+                    <div className="text-[11px] text-gray-400 uppercase">字体调节</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -421,7 +429,7 @@ function App() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[13px] font-bold text-blue-200">与上方素材距离</div>
+                    <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
