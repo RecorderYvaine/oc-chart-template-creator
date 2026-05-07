@@ -159,7 +159,39 @@ function App() {
         scale: 3, 
         backgroundColor: null, 
         useCORS: true, 
-        allowTaint: true 
+        allowTaint: true,
+        onclone: (clonedDoc) => {
+          // Add a style to override all modern colors with hex equivalents in the clone
+          const style = clonedDoc.createElement('style');
+          style.innerHTML = `
+            * {
+              color-scheme: light !important;
+              box-shadow: none !important;
+              text-shadow: none !important;
+            }
+            /* html2canvas fails on oklch/oklab. We must force legacy colors. */
+            :root {
+              --color-blue-400: #60a5fa !important;
+              --color-blue-500: #3b82f6 !important;
+              --color-blue-600: #2563eb !important;
+              --color-gray-100: #f3f4f6 !important;
+              --color-gray-200: #e5e7eb !important;
+              --color-gray-300: #d1d5db !important;
+              --color-gray-400: #9ca3af !important;
+              --color-gray-500: #6b7280 !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+          
+          // Re-inject fonts into the clone just in case
+          const fontStyle = clonedDoc.createElement('style');
+          fontStyle.innerHTML = `
+            @font-face { font-family: 'QijiP1'; src: url('${window.location.origin}/qiji-part1.ttf') format('truetype'); }
+            @font-face { font-family: 'QijiP2'; src: url('${window.location.origin}/qiji-part2.ttf') format('truetype'); }
+            @font-face { font-family: 'Huiwen'; src: url('${window.location.origin}/huiwen-mincho.otf') format('opentype'); }
+          `;
+          clonedDoc.head.appendChild(fontStyle);
+        }
       });
 
       const dataUrl = canvas.toDataURL('image/png');
