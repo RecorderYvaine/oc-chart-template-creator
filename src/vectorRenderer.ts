@@ -3,11 +3,13 @@ import opentype from 'opentype.js';
 let fontP1: opentype.Font | null = null;
 let fontP2: opentype.Font | null = null;
 let fontHuiwen: opentype.Font | null = null;
+let fontSerif: opentype.Font | null = null;
+let fontSans: opentype.Font | null = null;
 let initialized = false;
 
 /**
- * Robustly load local fonts for vectorization. 
- * We avoid external CDNs to ensure reliability in all regions.
+ * Loads all font files into memory as opentype.js Font objects.
+ * Now including Noto fonts to prevent everything from falling back to Huiwen.
  */
 export async function initVectorFonts() {
   if (initialized) return;
@@ -15,12 +17,17 @@ export async function initVectorFonts() {
   const results = await Promise.allSettled([
     fetch('/qiji-part1.ttf').then(r => r.arrayBuffer()),
     fetch('/qiji-part2.ttf').then(r => r.arrayBuffer()),
-    fetch('/huiwen-mincho.otf').then(r => r.arrayBuffer())
+    fetch('/huiwen-mincho.otf').then(r => r.arrayBuffer()),
+    // Use the same fonts as the live site for exact matching in vector mode
+    fetch('https://fonts.gstatic.com/s/notoserifsc/v26/ia4S6D-L89N7p9m87f9uG8_Z4tZ2fV-l.otf').then(r => r.arrayBuffer()),
+    fetch('https://fonts.gstatic.com/s/notosanssc/v26/k3kXo84MPtRZle96SrH5qJ7mYyid7A.otf').then(r => r.arrayBuffer())
   ]);
 
   if (results[0].status === 'fulfilled') fontP1 = opentype.parse(results[0].value);
   if (results[1].status === 'fulfilled') fontP2 = opentype.parse(results[1].value);
   if (results[2].status === 'fulfilled') fontHuiwen = opentype.parse(results[2].value);
+  if (results[3].status === 'fulfilled') fontSerif = opentype.parse(results[3].value);
+  if (results[4].status === 'fulfilled') fontSans = opentype.parse(results[4].value);
   
   initialized = true;
 }
@@ -34,23 +41,35 @@ function hasGlyph(font: opentype.Font | null, char: string): boolean {
 
 /**
  * Returns the best font for a character based on the user's preferred theme font.
- * Only uses loaded local fonts to prevent crashes.
  */
 function getBestFont(char: string, preferredFamily: string): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
-  
-  // 1. If Qiji mode: P1 -> P2 -> Huiwen
+  const isHuiwenMode = preferredFamily.includes('Huiwen');
+  const isSansMode = preferredFamily.includes('Sans');
+
+  // 1. If Qiji mode: P1 -> P2 -> Huiwen (for symbols/fallback)
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
+    return fontSerif || fontP1!;
   }
 
-  // 2. Default/Huiwen/Sans/Serif mode: Huiwen -> P1 (as serif fallback)
-  if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-  if (hasGlyph(fontP1, char)) return fontP1!;
-  
-  return fontP1 || fontP2 || fontHuiwen!;
+  // 2. If Huiwen mode: Huiwen -> Serif
+  if (isHuiwenMode) {
+    if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
+    return fontSerif || fontP1!;
+  }
+
+  // 3. If Sans mode: Sans -> Serif
+  if (isSansMode) {
+    if (hasGlyph(fontSans, char)) return fontSans!;
+    return fontSerif || fontP1!;
+  }
+
+  // 4. Default Serif mode: Serif -> P1
+  if (hasGlyph(fontSerif, char)) return fontSerif!;
+  return fontP1 || fontHuiwen || fontSans!;
 }
 
 function measureWidth(text: string, fontSize: number, preferredFamily: string): number {
@@ -89,13 +108,13 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     if (currentLine) lines.push(currentLine);
   }
 
-  const verticalPadding = fontSize * 1.0; 
+  const verticalPadding = fontSize * 1.2; 
   const totalHeight = lines.length * fontSize * lineHeight + verticalPadding;
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily);
-    const yBaseline = (idx + 0.88) * fontSize * lineHeight + (fontSize * 0.3);
+    const yBaseline = (idx + 0.95) * fontSize * lineHeight + (fontSize * 0.3);
     let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
     
     for (const char of line) {
@@ -111,7 +130,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
       }
 
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
-      // Stroke width 0.3 to prevent text from looking too thin in vector mode
+      // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.3" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
@@ -120,7 +139,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
   return `
     <svg width="${maxWidth}" height="${totalHeight}" viewBox="0 0 ${maxWidth} ${totalHeight}" 
       xmlns="http://www.w3.org/2000/svg" 
-      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.15}px);">
+      style="display: block; overflow: visible; background: transparent; transform: translateY(-${fontSize * 0.2}px);">
       ${pathElements.join('')}
     </svg>
   `;
