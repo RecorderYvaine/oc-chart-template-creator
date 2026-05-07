@@ -98,7 +98,8 @@ function App() {
 
   // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiCombo"').catch(() => {});
+    document.fonts.load('1em "QijiP1"').catch(() => {});
+    document.fonts.load('1em "QijiP2"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
@@ -110,7 +111,7 @@ function App() {
     if (isQiji || isHuiwen) {
       setIsFontLoading(true);
       const fontsToLoad = isQiji 
-        ? [document.fonts.load('1em "QijiCombo"')]
+        ? [document.fonts.load('1em "QijiP1"'), document.fonts.load('1em "QijiP2"')]
         : [document.fonts.load('1em "HuiwenMincho"')];
       
       Promise.all(fontsToLoad)
@@ -131,9 +132,9 @@ function App() {
     r.style.setProperty('--oc-box-bg', s.theme.boxBgColor);
     if (s.theme.fontFamily) {
       let family = s.theme.fontFamily.split('|')[0];
-      // Updated stack strategy: If Qiji is selected, use QijiCombo with Huiwen as fallback
+      // Updated stack strategy: If Qiji is selected, use QijiP1, QijiP2 with Huiwen as fallback
       if (family.includes('Qiji')) {
-        family = '"QijiCombo", "HuiwenMincho", serif';
+        family = '"QijiP1", "QijiP2", "HuiwenMincho", serif';
       } else if (family.includes('Huiwen')) {
         family = '"HuiwenMincho", serif';
       }
@@ -216,7 +217,7 @@ function App() {
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
                     <option value='"HuiwenMincho", serif'>汇文明朝体</option>
-                    <option value='"QijiCombo", serif'>齐伋体</option>
+                    <option value='"Qiji", serif'>齐伋体</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
@@ -285,7 +286,7 @@ function App() {
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -306,7 +307,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -328,7 +329,7 @@ function App() {
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                    <div className="text-blue-200 text-[13px] font-bold ml-0.5">字体调节</div>
                     <div className="flex items-center gap-2">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
