@@ -145,17 +145,17 @@ function App() {
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); 
-    setRenderProgress(0);
+    setRenderProgress(0); // Start: 0
     
     const originalZoom = zoom;
     setZoom(1);
 
     try {
       await initVectorFonts();
-      setRenderProgress(10);
+      setRenderProgress(15); // After InitFonts: 15
       
-      await new Promise(r => setTimeout(r, 600));
-      setRenderProgress(20);
+      await new Promise(r => setTimeout(r, 600)); // Zoom Settle
+      setRenderProgress(25); // After Zoom Settle: 25
 
       const canvas = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
@@ -171,7 +171,8 @@ function App() {
         const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
         const text = el.value || el.placeholder || "";
         
-        setRenderProgress(20 + Math.round((i / textElements.length) * 60));
+        // Inside Loop: 25 + (i/len)*65
+        setRenderProgress(25 + Math.round((i / textElements.length) * 65));
 
         if (!text) continue;
 
@@ -182,8 +183,9 @@ function App() {
         const padding = style.padding;
 
         const elRect = el.getBoundingClientRect();
-        const left = (elRect.left - canvasRect.left) / originalZoom;
-        const top = (elRect.top - canvasRect.top) / originalZoom;
+        // Convert viewport relative to canvas relative, then UN-SCALE by zoom (which is now 1)
+        const left = (elRect.left - canvasRect.left) / 1;
+        const top = (elRect.top - canvasRect.top) / 1;
 
         const isTitle = el.classList.contains('title-big') || el.classList.contains('title-grid');
         const isBold = isTitle && s.theme.titleBold;
@@ -212,14 +214,13 @@ function App() {
         el.style.opacity = '0';
       }
 
-      setRenderProgress(90);
       const dataUrl = await toPng(canvas, { 
         quality: 1, 
         pixelRatio: 3, 
         skipFonts: true, 
         backgroundColor: 'transparent',
       });
-      setRenderProgress(100);
+      setRenderProgress(100); // Finish: 100
 
       overlays.forEach(o => canvas.removeChild(o));
       hiddenElements.forEach(item => item.el.style.opacity = item.originalOpacity);
@@ -336,7 +337,7 @@ function App() {
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2">全局大字调节</h2>
             <div className="space-y-6 pt-2">
               <div className="space-y-3">
-                <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
+                <div className="text-[13px] font-bold text-gray-200 uppercase px-0.5">主标题</div>
                 <div className="space-y-1">
                   <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-2">
@@ -351,7 +352,7 @@ function App() {
               </div>
 
               <div className="space-y-3 border-t border-white/5 pt-4">
-                <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
+                <div className="text-[13px] font-bold text-gray-200 uppercase px-0.5">副标题</div>
                 <div className="space-y-1">
                   <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-2">
@@ -367,7 +368,7 @@ function App() {
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
             <div className="space-y-6 pt-2">
               <div className="space-y-3">
-                <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
+                <div className="text-[13px] font-bold text-gray-200 uppercase px-0.5">格子标题</div>
                 <div className="space-y-1">
                   <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-3">
@@ -377,7 +378,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-gray-200 uppercase">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -389,7 +390,7 @@ function App() {
               </div>
 
               <div className="space-y-3 border-t border-white/5 pt-4">
-                <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
+                <div className="text-[13px] font-bold text-gray-200 uppercase px-0.5">格子小字</div>
                 <div className="space-y-1">
                   <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                   <div className="flex items-center gap-3">
@@ -399,11 +400,11 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-gray-200 uppercase">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                    <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                    <button onClick={() => s.updateItem(s.rows[0]?.id, s.rows[0]?.items[0]?.id, { showSubtitle: !s.rows[0]?.items[0]?.showSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                       {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                   </div>
@@ -412,7 +413,7 @@ function App() {
 
               {extraLineIndices.map(idx => (
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
-                  <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
+                  <div className="text-[13px] font-bold text-gray-200 uppercase px-0.5">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
                     <div className="text-[11px] text-blue-300 uppercase font-medium">字体调节</div>
                     <div className="flex items-center gap-3">
@@ -422,7 +423,7 @@ function App() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
+                    <div className="text-[13px] font-bold text-gray-200 uppercase">与上方素材距离</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -436,7 +437,7 @@ function App() {
                   </div>
                 </div>
               ))}
-              <button onClick={s.addExtraLineToAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#333] hover:bg-blue-600/20 border border-[#444] text-gray-300 py-2 rounded-xl transition-all text-xs font-bold shadow-lg"><Plus className="w-4 h-4 text-blue-400" />  添加一行描述到所有格子</button>
+              <button onClick={s.addExtraLineToAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#333] hover:bg-blue-600/20 border border-[#444] text-gray-300 py-2 rounded-xl transition-all text-xs font-bold shadow-lg"><Plus className="w-4 h-4 text-blue-400" /> 添加一行描述到所有格子</button>
             </div>
           </section>
 
