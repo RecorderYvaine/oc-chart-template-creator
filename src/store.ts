@@ -96,6 +96,7 @@ const createEmptyItem = (): GridItem => ({
   id: generateId(),
   title: '格子标题',
   subtitle: '格子小字',
+  subtitleColor: '#bbbbbb',
   content: '',
   flexGrow: false,
   textOffsetY: 0,
@@ -139,9 +140,9 @@ export const useStore = create<AppState>()((set) => ({
     {
       id: generateId(),
       items: [
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
+        { id: generateId(), title: '格子标题', subtitle: '格子小字', subtitleColor: '#bbbbbb', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
+        { id: generateId(), title: '格子标题', subtitle: '格子小字', subtitleColor: '#bbbbbb', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
+        { id: generateId(), title: '格子标题', subtitle: '格子小字', subtitleColor: '#bbbbbb', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
       ],
       fillWidth: false,
     }

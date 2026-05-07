@@ -586,7 +586,21 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea className="w-full text-center bg-transparent outline-none opacity-80 resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${currentSubtitleSize}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onInput={handleAutoResize} onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} placeholder="格子小字" />
+                                <textarea 
+                                    className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" 
+                                    rows={1} 
+                                    style={{ 
+                                      fontFamily: 'var(--oc-font)', 
+                                      color: item.subtitleColor || s.theme.textColor, 
+                                      fontSize: `${currentSubtitleSize}px`, 
+                                      fontWeight: 'normal', 
+                                      lineHeight: 1.2 
+                                    }} 
+                                    value={item.subtitle} 
+                                    onInput={handleAutoResize} 
+                                    onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} 
+                                    placeholder="格子小字" 
+                                  />
                               </div>
                             )}
                             {item.extraLines?.map((line, lineIndex) => {
