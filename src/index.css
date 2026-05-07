@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
-/* 齐伋体分片加载 (完美绕过25MB限制) */
+/* 齐伋体分片1 (16MB) */
 @font-face {
-  font-family: 'QijiCombo';
-  src: url('/qiji-part1.ttf') format('truetype'),
-       url('/qiji-part2.ttf') format('truetype');
+  font-family: 'QijiPart1';
+  src: url('/qiji-part1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 齐伋体分片2 (24MB) */
+@font-face {
+  font-family: 'QijiPart2';
+  src: url('/qiji-part2.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

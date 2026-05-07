@@ -98,8 +98,8 @@ function App() {
 
   // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiLite"').catch(() => {});
-    document.fonts.load('1em "QijiFull"').catch(() => {});
+    document.fonts.load('1em "QijiPart1"').catch(() => {});
+    document.fonts.load('1em "QijiPart2"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
@@ -109,8 +109,8 @@ function App() {
     const isCustom = s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen');
     if (isCustom) {
       setIsFontLoading(true);
-      // We track the heaviest part of the selected stack (Full Qiji or Huiwen)
-      const name = s.theme.fontFamily.includes('Qiji') ? 'QijiFull' : 'HuiwenMincho';
+      // Track "QijiPart2" if Qiji is selected, otherwise track HuiwenMincho
+      const name = s.theme.fontFamily.includes('Qiji') ? 'QijiPart2' : 'HuiwenMincho';
       document.fonts.load(`1em "${name}"`).then(() => setIsFontLoading(false)).catch(() => setIsFontLoading(false));
     } else {
       setIsFontLoading(false);
@@ -128,10 +128,9 @@ function App() {
     r.style.setProperty('--oc-box-bg', s.theme.boxBgColor);
     if (s.theme.fontFamily) {
       let family = s.theme.fontFamily.split('|')[0];
-      // Tiered Fallback: If Qiji is selected, use Lite for speed, Full for completeness,
-      // and Huiwen as a reliable bridge while Full is downloading.
+      // Updated stack strategy: If Qiji is selected, use both parts with Huiwen as fallback
       if (family.includes('Qiji')) {
-        family = '"QijiLite", "QijiFull", "HuiwenMincho", serif';
+        family = '"QijiPart1", "QijiPart2", "HuiwenMincho", serif';
       } else if (family.includes('Huiwen')) {
         family = '"HuiwenMincho", serif';
       }
@@ -209,7 +208,7 @@ function App() {
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 样式与字体</h2>
             <div className="space-y-3">
               <div className="flex flex-col gap-3 pt-1">
-                <label className="text-[13px] font-bold text-gray-100 uppercase px-0.5">全局字体选择</label>
+                <label className="text-[13px] font-bold text-gray-200 uppercase px-0.5">全局字体选择</label>
                 <div className="relative group/select">
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
@@ -227,7 +226,7 @@ function App() {
                 )}
               </div>
               <div className="flex justify-between items-center py-1">
-                <span className="text-[13px] font-bold text-gray-100">总背景颜色</span>
+                <span className="text-[13px] font-bold text-gray-200">总背景颜色</span>
                 <input type="color" value={s.theme.bgColor} onChange={(e) => s.setTheme({ bgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
               </div>
               <div className="flex justify-between items-center py-1">
@@ -253,7 +252,7 @@ function App() {
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="flex justify-between text-[13px] text-gray-100 font-bold uppercase"><span>线框粗细</span><span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span></div>
+                <div className="flex justify-between text-[13px] text-gray-200 font-bold uppercase"><span>线框粗细</span><span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span></div>
                 <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
               </div>
             </div>
@@ -266,7 +265,7 @@ function App() {
                 <div key={item.k} className="flex items-center gap-3 py-1">
                   <span className="text-[13px] w-14 shrink-0 font-bold text-gray-200">{item.l}</span>
                   <input type="range" min="10" max={item.m} value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                  <input type="number" value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[12px] rounded p-1 text-gray-100" />
+                  <input type="number" value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[12px] rounded p-1 text-gray-200" />
                 </div>
               ))}
               <div className="flex justify-between items-center py-1">
@@ -337,7 +336,7 @@ function App() {
                   <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{item.global ? (s as any)[item.key] : (s.theme as any)[item.key]}px</span></div>
                   <div className="flex items-center gap-3">
                     <input type="range" min={item.min} max={item.max} value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                    <input type="number" value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[12px] font-bold text-gray-100" />
+                    <input type="number" value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[12px] font-bold text-gray-200" />
                   </div>
                 </div>
               ))}
@@ -381,7 +380,7 @@ function App() {
                   <div key={row.id} className="flex relative group/row justify-center" style={{ gap: `${s.gridGap}px`, width: '100%' }}>
                     <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex flex-col gap-2 z-20">
                       <button onClick={() => s.addItemToRow(row.id)} className="p-1 bg-blue-600 text-white rounded-lg shadow-lg hover:scale-110" title="加格子"><Plus className="w-4 h-4" /></button>
-                      <button onClick={() => s.toggleRowFillWidth(row.id)} className={`p-1 rounded-lg shadow-lg transition-all hover:scale-110 ${row.fillWidth ? 'bg-orange-500 text-white border-orange-400' : 'bg-gray-600 text-gray-100'}`} title="铺满该行"><StretchHorizontal className="w-4 h-4" /></button>
+                      <button onClick={() => s.toggleRowFillWidth(row.id)} className={`p-1 rounded-lg shadow-lg transition-all hover:scale-110 ${row.fillWidth ? 'bg-orange-500 text-white border-orange-400' : 'bg-gray-600 text-gray-200'}`} title="铺满该行"><StretchHorizontal className="w-4 h-4" /></button>
                       <button onClick={() => s.removeRow(row.id)} className="p-1 bg-red-600 text-white rounded-lg shadow-lg hover:scale-110" title="删行"><Trash2 className="w-4 h-4" /></button>
                     </div>
                     {row.items.map((item) => {
