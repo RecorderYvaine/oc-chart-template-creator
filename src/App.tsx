@@ -144,17 +144,16 @@ function App() {
     const currentZoom = zoom;
     if (zoom !== 1) setZoom(1);
     try {
-      // Wait for ALL three fonts
+      // Wait for ALL three fonts to be ready
       await Promise.all([
-        document.fonts.load('1em QijiP1'),
-        document.fonts.load('1em QijiP2'),
-        document.fonts.load('1em Huiwen')
+        document.fonts.load('1em "QijiP1"'),
+        document.fonts.load('1em "QijiP2"'),
+        document.fonts.load('1em "Huiwen"')
       ]);
       await document.fonts.ready;
       
-      // Intelligent delay for heavy glyphs
-      const isQiji = s.theme.fontFamily.includes('Qiji');
-      await new Promise(r => setTimeout(r, isQiji ? 2000 : 500));
+      // Increase the "wait for rasterization" delay to 3000ms
+      await new Promise(r => setTimeout(r, 3000));
 
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
