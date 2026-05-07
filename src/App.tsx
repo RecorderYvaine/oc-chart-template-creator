@@ -6,6 +6,7 @@ import {
   X, Search, ZoomIn, ZoomOut, RotateCcw 
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { initVectorFonts, generateTextSVG } from './vectorRenderer';
 
 const isLightColor = (color: string) => {
   const hex = color.replace('#', '');
@@ -147,30 +148,85 @@ function App() {
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); 
-    setExportMessage('正在准备预览...');
+    setExportMessage('正在矢量化捕捉文字...');
     
     const originalZoom = zoom;
-    if (zoom !== 1) setZoom(1);
+    setZoom(1);
 
     try {
-      await document.fonts.ready;
+      // Initialize vector fonts first
+      await initVectorFonts();
+      
       // Small delay for layout to settle after zoom change
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 400));
 
       const original = canvasRef.current;
+      
+      // Hide no-export elements in original temporarily
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      const dataUrl = await toPng(original, { 
-        quality: 0.95, 
-        pixelRatio: 3, 
-        skipFonts: false,
-        backgroundColor: undefined, // Fully transparent background
-      });
+      // Clone the node
+      const clone = original.cloneNode(true) as HTMLElement;
+      clone.style.position = 'fixed';
+      clone.style.left = '-9999px';
+      clone.style.top = '0';
+      clone.style.width = original.offsetWidth + 'px';
+      clone.style.height = original.offsetHeight + 'px';
+      document.body.appendChild(clone);
 
-      noExportEls.forEach(el => (el as HTMLElement).style.display = '');
-      setPreviewUrl(dataUrl);
-      setExportMessage('');
+      try {
+        // Restore no-export elements in original
+        noExportEls.forEach(el => (el as HTMLElement).style.display = '');
+
+        // Iterate through ORIGINAL elements to get computed styles and apply to CLONE
+        const textElements = original.querySelectorAll('textarea, input');
+        const clonedTextElements = clone.querySelectorAll('textarea, input');
+
+        for (let i = 0; i < textElements.length; i++) {
+          const orig = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
+          const clo = clonedTextElements[i] as HTMLElement;
+          
+          const style = window.getComputedStyle(orig);
+          const fontSize = parseFloat(style.fontSize);
+          const color = style.color;
+          const textAlign = (style.textAlign || 'center') as 'left' | 'center';
+          const width = orig.offsetWidth;
+          const padding = style.padding;
+          const text = orig.value || (orig as HTMLInputElement).placeholder || "";
+
+          if (text) {
+            const svgString = generateTextSVG(text, fontSize, width, color, textAlign);
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = svgString.trim();
+            wrapper.style.display = 'flex';
+            wrapper.style.flexDirection = 'column';
+            wrapper.style.justifyContent = 'center';
+            wrapper.style.alignItems = textAlign === 'center' ? 'center' : 'flex-start';
+            wrapper.style.width = '100%';
+            wrapper.style.height = '100%';
+            wrapper.style.padding = padding;
+            wrapper.style.pointerEvents = 'none';
+            wrapper.style.boxSizing = 'border-box';
+            
+            clo.parentNode?.replaceChild(wrapper, clo);
+          } else {
+            clo.style.visibility = 'hidden';
+          }
+        }
+
+        const dataUrl = await toPng(clone, { 
+          quality: 1, 
+          pixelRatio: 3, 
+          skipFonts: true, // Fonts are already vectorized
+          backgroundColor: 'transparent',
+        });
+
+        setPreviewUrl(dataUrl);
+        setExportMessage('');
+      } finally {
+        document.body.removeChild(clone);
+      }
     } catch (err) {
       console.error(err);
       setExportMessage('渲染失败，请重试');
@@ -263,17 +319,33 @@ function App() {
 
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2">全局大字调节</h2>
-            <div className="space-y-1">
-              {[{l:'主标题',k:'titleSize',m:200},{l:'副标题',k:'subtitleSize',m:100}].map(item => (
-                <div key={item.k} className="flex items-center gap-3 py-1">
-                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-200 uppercase">{item.l}</span>
-                  <input type="range" min="10" max={item.m} value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                  <input type="number" value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[12px] rounded p-1 text-gray-200" />
+            <div className="space-y-6 pt-2">
+              {/* Main Title Row */}
+              <div className="space-y-3">
+                <div className="text-[13px] font-bold text-blue-200 uppercase">主标题</div>
+                <div className="space-y-1">
+                  <div className="text-blue-300 text-[11px]">字体调节</div>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                    <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                  </div>
                 </div>
-              ))}
-              <div className="flex justify-between items-center py-1">
-                <span className="text-[13px] font-bold text-gray-200 uppercase">标题加粗</span>
-                <input type="checkbox" checked={s.theme.titleBold !== false} onChange={(e) => s.setTheme({ titleBold: e.target.checked })} className="w-4 h-4 cursor-pointer accent-blue-500" />
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-[13px] font-bold text-gray-200 uppercase">标题加粗</span>
+                  <input type="checkbox" checked={s.theme.titleBold !== false} onChange={(e) => s.setTheme({ titleBold: e.target.checked })} className="w-4 h-4 cursor-pointer accent-blue-500" />
+                </div>
+              </div>
+
+              {/* Subtitle Row */}
+              <div className="space-y-3 border-t border-white/5 pt-4">
+                <div className="text-[13px] font-bold text-blue-200 uppercase">副标题</div>
+                <div className="space-y-1">
+                  <div className="text-blue-300 text-[11px]">字体调节</div>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="10" max={100} value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                    <input type="number" value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -288,7 +360,7 @@ function App() {
                   <div className="text-blue-300 text-[11px]">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                    <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                     <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                   </div>
                 </div>
@@ -296,7 +368,7 @@ function App() {
                   <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                    <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                     <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
                       {s.theme.showGridTitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
@@ -311,7 +383,7 @@ function App() {
                   <div className="text-blue-300 text-[11px]">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                    <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                     <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                   </div>
                 </div>
@@ -319,7 +391,7 @@ function App() {
                   <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                    <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                     <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
                       {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
@@ -335,7 +407,7 @@ function App() {
                     <div className="text-blue-300 text-[11px]">字体调节</div>
                     <div className="flex items-center gap-2">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                       <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                     </div>
                   </div>
@@ -343,7 +415,7 @@ function App() {
                     <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
                     <div className="flex items-center gap-2">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                       <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
                         {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </button>
@@ -383,7 +455,7 @@ function App() {
                   <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{item.global ? (s as any)[item.key] : (s.theme as any)[item.key]}px</span></div>
                   <div className="flex items-center gap-3">
                     <input type="range" min={item.min} max={item.max} value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                    <input type="number" value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[12px] font-bold text-gray-200" />
+                    <input type="number" value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
                   </div>
                 </div>
               ))}
