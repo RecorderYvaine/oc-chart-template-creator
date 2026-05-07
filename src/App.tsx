@@ -21,7 +21,7 @@ const isLightColor = (color: string) => {
 
 /**
  * PunchHoleBackground: Creates an SVG "donut" path to allow the parent background 
- * to show through specific "holes" (the grid boxes) when isTransparent is true.
+ * to show through specific "holes" (the grid boxes) when isTransparentBg is true.
  */
 function PunchHoleBackground({ containerRef, bgColor, isTransparent, zoom, rowCount, colCount, containerWidth }: { 
   containerRef: React.RefObject<HTMLDivElement | null>, 
@@ -268,23 +268,33 @@ function App() {
                   <span className="text-[13px] font-bold text-gray-200">文字颜色</span>
                   <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
                 </div>
+                
+                {/* 格子填充 */}
                 <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-[13px] font-bold text-gray-200">格子填充</span>
-                    <span className="text-[10px] text-gray-500">不填充即“掏洞”透明</span>
-                  </div>
+                  <span className="text-[13px] font-bold text-gray-200 uppercase">格子填充</span>
                   <div className="flex items-center gap-3">
                     <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
-                    <button onClick={() => s.setTheme({ isTransparentBg: !s.theme.isTransparentBg })} className={`p-1.5 rounded-lg transition-colors ${s.theme.isTransparentBg ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
-                      {s.theme.isTransparentBg ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <button onClick={() => s.setTheme({ showGridFill: !s.theme.showGridFill })} className={`p-1.5 rounded-lg transition-colors ${!s.theme.showGridFill ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
+                      {!s.theme.showGridFill ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
+
+                {/* 镂空透明 */}
                 <div className="flex justify-between items-center">
-                  <span className="text-[13px] font-bold text-gray-200">外框线颜色</span>
+                  <div className="flex flex-col">
+                    <span className="text-[13px] font-bold text-gray-200 uppercase">镂空透明 (导出透明孔)</span>
+                  </div>
+                  <button onClick={() => s.setTheme({ isTransparentBg: !s.theme.isTransparentBg })} className={`p-1.5 rounded-lg transition-colors ${s.theme.isTransparentBg ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                    {s.theme.isTransparentBg ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] font-bold text-gray-200 uppercase">外框线</span>
                   <div className="flex items-center gap-3">
                     <input type="color" value={s.theme.borderColor} onChange={(e) => s.setTheme({ borderColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer rounded" />
-                    <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1.5 rounded-lg transition-colors ${!s.theme.showBoxBorder ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                    <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1.5 rounded-lg transition-colors ${!s.theme.showBoxBorder ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
                       {!s.theme.showBoxBorder ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -293,10 +303,13 @@ function App() {
 
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[13px] text-gray-200 font-bold uppercase">
-                  <span>外框线粗细</span>
+                  <span>线框粗细</span>
                   <span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span>
                 </div>
-                <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                <div className="flex items-center gap-3">
+                  <input type="range" min="0" max="20" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                  <input type="number" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center font-bold text-[11px] rounded p-1" />
+                </div>
               </div>
             </div>
           </section>
@@ -324,13 +337,13 @@ function App() {
 
           {/* Section: Description Management */}
           <section className="space-y-4">
-            <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述管理</h2>
+            <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
             <div className="space-y-4">
               {/* Row 1: Grid Title */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
-                  <span>Row 1: 格子标题 (固定)</span>
-                  <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded-md transition-colors ${!s.theme.showGridTitle ? 'text-red-400 bg-red-400/10' : 'text-gray-500 hover:text-white'}`}>
+                  <span>格子标题行 (固定)</span>
+                  <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded-md transition-colors ${!s.theme.showGridTitle ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
                     {!s.theme.showGridTitle ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -344,8 +357,8 @@ function App() {
               {/* Row 2: Grid Subtitle */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
-                  <span>Row 2: 格子小字 (固定)</span>
-                  <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded-md transition-colors ${!s.theme.showGridSubtitle ? 'text-red-400 bg-red-400/10' : 'text-gray-500 hover:text-white'}`}>
+                  <span>格子副标题行 (固定)</span>
+                  <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded-md transition-colors ${!s.theme.showGridSubtitle ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
                     {!s.theme.showGridSubtitle ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -357,22 +370,29 @@ function App() {
               </div>
 
               {/* Dynamic Rows: Extra Descriptions */}
-              {extraLineIndices.map(idx => (
-                <div key={idx} className="space-y-1.5 group/dynamic">
-                  <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
-                    <span>Extra Row {idx + 1}: 描述行</span>
-                    <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover/dynamic:opacity-100 transition-opacity">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              {extraLineIndices.map(idx => {
+                const isHidden = s.rows.every(r => r.items.every(i => i.extraLines?.[idx]?.hidden));
+                return (
+                  <div key={idx} className="space-y-1.5 group/dynamic">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-blue-300 uppercase">
+                      <span>额外描述行 {idx + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded-md transition-colors ${isHidden ? 'text-red-400 bg-red-400/10' : 'text-blue-400 bg-blue-500/10'}`}>
+                          {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="p-1 text-gray-500 hover:text-red-400 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                      <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer rounded" />
+                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[11px] rounded p-1" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                    <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer rounded" />
-                    <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[11px] rounded p-1" />
-                    <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="text-[10px] text-red-500/80 font-bold px-1 hover:text-red-500">删除</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               
               <button onClick={s.addExtraLineToAll} className="w-full flex items-center justify-center gap-2 bg-[#2a2a2a] hover:bg-blue-600/10 border border-[#333] hover:border-blue-500/50 text-gray-300 py-2.5 rounded-xl transition-all text-xs font-bold shadow-lg">
                 <Plus className="w-4 h-4 text-blue-400" /> 
@@ -542,14 +562,14 @@ function App() {
                             style={{ 
                               height: `${fixedHeight}px`, 
                               border: (s.theme.showBoxBorder && s.theme.borderWidth > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', 
-                              backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.boxBgColor 
+                              backgroundColor: s.theme.showGridFill ? s.theme.boxBgColor : 'transparent' 
                             }}
                           >
                             <textarea 
                               className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" 
                               style={{ 
                                 fontFamily: 'var(--oc-font)', 
-                                color: s.theme.isTransparentBg ? s.theme.textColor : (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') 
+                                color: s.theme.showGridFill ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor
                               }} 
                               value={item.content} 
                               onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} 
@@ -615,30 +635,33 @@ function App() {
                               </div>
                             )}
 
-                            {item.extraLines?.map((line, lineIndex) => (
-                              <div key={line.id} className="relative w-full group/label flex justify-center">
-                                <div className="no-export absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
-                                   <input type="color" value={line.color || s.theme.textColor} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { color: e.target.value })} className="w-3 h-3 p-0 border-0 bg-transparent cursor-pointer rounded" />
-                                   <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) + 2 })} className="text-[10px] text-blue-500 font-bold">+</button>
-                                   <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
-                                   <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
+                            {item.extraLines?.map((line, lineIndex) => {
+                              if (line.hidden) return null;
+                              return (
+                                <div key={line.id} className="relative w-full group/label flex justify-center">
+                                  <div className="no-export absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
+                                     <input type="color" value={line.color || s.theme.textColor} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { color: e.target.value })} className="w-3 h-3 p-0 border-0 bg-transparent cursor-pointer rounded" />
+                                     <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) + 2 })} className="text-[10px] text-blue-500 font-bold">+</button>
+                                     <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
+                                     <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
+                                  </div>
+                                  <textarea 
+                                    className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" 
+                                    rows={1} 
+                                    style={{ 
+                                      fontFamily: 'var(--oc-font)', 
+                                      color: line.color || s.theme.textColor, 
+                                      fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, 
+                                      fontWeight: 'normal' 
+                                    }} 
+                                    value={line.text} 
+                                    onInput={handleAutoResize} 
+                                    onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} 
+                                    placeholder={`描述行 ${lineIndex + 1}`} 
+                                  />
                                 </div>
-                                <textarea 
-                                  className="w-full text-center bg-transparent outline-none opacity-70 resize-none overflow-hidden block p-0" 
-                                  rows={1} 
-                                  style={{ 
-                                    fontFamily: 'var(--oc-font)', 
-                                    color: line.color || s.theme.textColor, 
-                                    fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, 
-                                    fontWeight: 'normal' 
-                                  }} 
-                                  value={line.text} 
-                                  onInput={handleAutoResize} 
-                                  onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} 
-                                  placeholder={`描述行 ${lineIndex + 1}`} 
-                                />
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );

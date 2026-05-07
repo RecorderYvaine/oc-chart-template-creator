@@ -7,6 +7,7 @@ export interface TextLine {
   text: string;
   color?: string;
   fontSize?: number;
+  hidden?: boolean;
 }
 
 export interface GridItem {
@@ -39,6 +40,7 @@ interface AppState {
     boxAspectRatio: string;
     boxBgColor: string;
     isTransparentBg: boolean;
+    showGridFill: boolean;
     showBoxBorder: boolean;
     showGridTitle: boolean;
     showGridSubtitle: boolean;
@@ -83,6 +85,7 @@ interface AppState {
   updateExtraLine: (rowId: string, itemId: string, lineId: string, data: Partial<TextLine>) => void;
   updateExtraLineSizeGlobal: (index: number, size: number) => void;
   updateExtraLineColorGlobal: (index: number, color: string) => void;
+  toggleExtraLineVisibilityGlobal: (index: number) => void;
   updateGridTitleSizeGlobal: (size: number) => void;
   updateGridSubtitleSizeGlobal: (size: number) => void;
   updateGridTitleColorGlobal: (color: string) => void;
@@ -108,6 +111,7 @@ export const useStore = create<AppState>()((set) => ({
     boxAspectRatio: '3/4',
     boxBgColor: '#ffffff',
     isTransparentBg: false,
+    showGridFill: true,
     showBoxBorder: true,
     showGridTitle: true,
     showGridSubtitle: true,
@@ -277,6 +281,16 @@ export const useStore = create<AppState>()((set) => ({
         items: r.items.map((i) => ({
           ...i,
           extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, color: color } : l),
+        })),
+      })),
+    })),
+  toggleExtraLineVisibilityGlobal: (index) =>
+    set((state) => ({
+      rows: state.rows.map((r) => ({
+        ...r,
+        items: r.items.map((i) => ({
+          ...i,
+          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, hidden: !l.hidden } : l),
         })),
       })),
     })),
