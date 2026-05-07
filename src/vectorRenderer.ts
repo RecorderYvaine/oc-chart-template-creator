@@ -13,7 +13,7 @@ export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
   const fetchFont = async (url: string, name: string) => {
     try {
-      if (onStatus) onStatus(`加载字体: ${name}...`);
+      if (onStatus) onStatus(`加载字体资源: ${name}...`);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buffer = await res.arrayBuffer();
@@ -84,13 +84,22 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string, i
   return width;
 }
 
-export function generateTextSVG(text: string, fontSize: number, maxWidth: number, targetHeight: number, color: string, align: 'left' | 'center' = 'center', preferredFamily: string = "", isBold: boolean = false) {
+export function generateTextSVG(
+  text: string, 
+  fontSize: number, 
+  maxWidth: number, 
+  targetHeight: number,
+  color: string, 
+  align: 'left' | 'center' = 'center', 
+  preferredFamily: string = "", 
+  isBold: boolean = false
+) {
   const isQiji = preferredFamily.includes('Qiji');
-  // Qiji needs more room for calligraphy flourishes, Noto needs precise centering
-  const lineHeightMult = isQiji ? 1.45 : 1.35;
+  // Use a balanced line height
+  const lineHeightMult = 1.35;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
-  const safeMaxWidth = maxWidth - 4;
+  const safeMaxWidth = maxWidth - 2;
 
   for (const p of paragraphs) {
     let currentLine = "";
@@ -104,13 +113,14 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
   }
 
   const contentHeight = lines.length * fontSize * lineHeightMult;
-  // Center content vertically, but Qiji gets a slight nudge down for balance
-  const startY = (targetHeight - contentHeight) / 2 + (isQiji ? fontSize * 0.1 : 0);
+  // Dynamic vertical center logic
+  const startY = (targetHeight - contentHeight) / 2;
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily, isBold);
-    const yBaseline = startY + (idx + 0.85) * fontSize * lineHeightMult;
+    // Move baseline down to prevent top-clipping
+    const yBaseline = startY + (idx + 0.88) * fontSize * lineHeightMult;
     let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
     
     for (const char of line) {
@@ -124,14 +134,26 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
 
       const path = glyph.getPath(x, yBaseline + yOff, curSize);
       const isNativeBold = (font === fontSerifBold || font === fontSansBold);
-      // Precision 4 is often more stable for Qiji curves than 5
-      const pathData = path.toPathData(isQiji ? 4 : 5);
-      const sw = isBold ? (isNativeBold ? 0.1 : 0.95) : (isQiji ? 0.42 : 0.35);
+      const isNoto = font === fontSerif || font === fontSerifBold || font === fontSans || font === fontSansBold;
+      
+      // Precision 4 is optimal for Noto to prevent path errors.
+      const pathData = path.toPathData(4);
+      
+      // Stroke Weight logic: 
+      // Noto Serif needs VERY light strokes (0.1) if regular to keep crisp, or 0 if bold.
+      // Qiji needs heavier strokes (0.42/0.95) to maintain the ink-spread calligraphy look.
+      let sw = 0.38;
+      if (isBold) {
+        sw = isNativeBold ? 0.05 : 0.95;
+      } else {
+        sw = isNoto ? 0.15 : 0.42;
+      }
 
       pathElements.push(`<path d="${pathData}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * curSize / font.unitsPerEm;
     }
   });
 
-  return `<svg width="${maxWidth}" height="${targetHeight}" viewBox="0 0 ${maxWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
+  // Use overflow:visible and a larger viewBox to ensure descenders/flourishes are NEVER cut.
+  return `<svg width="${maxWidth}" height="${targetHeight}" viewBox="-10 -10 ${maxWidth + 20} ${targetHeight + 20}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
 }
