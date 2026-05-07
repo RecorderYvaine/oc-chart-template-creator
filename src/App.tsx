@@ -145,17 +145,17 @@ function App() {
   const handleShowPreview = async () => {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); 
-    setRenderProgress(0); // Start: 0
+    setRenderProgress(0); 
     
     const originalZoom = zoom;
     setZoom(1);
 
     try {
       await initVectorFonts();
-      setRenderProgress(15); // After InitFonts: 15
+      setRenderProgress(15); 
       
-      await new Promise(r => setTimeout(r, 600)); // Zoom Settle
-      setRenderProgress(25); // After Zoom Settle: 25
+      await new Promise(r => setTimeout(r, 600)); 
+      setRenderProgress(25); 
 
       const canvas = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
@@ -171,7 +171,6 @@ function App() {
         const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
         const text = el.value || el.placeholder || "";
         
-        // Inside Loop: 25 + (i/len)*65
         setRenderProgress(25 + Math.round((i / textElements.length) * 65));
 
         if (!text) continue;
@@ -180,17 +179,21 @@ function App() {
         const fontSize = parseFloat(style.fontSize);
         const color = style.color;
         const textAlign = (style.textAlign || 'center') as 'left' | 'center';
-        const padding = style.padding;
+        const padding = {
+          top: parseFloat(style.paddingTop),
+          right: parseFloat(style.paddingRight),
+          bottom: parseFloat(style.paddingBottom),
+          left: parseFloat(style.paddingLeft)
+        };
 
         const elRect = el.getBoundingClientRect();
-        // Convert viewport relative to canvas relative, then UN-SCALE by zoom (which is now 1)
-        const left = (elRect.left - canvasRect.left) / 1;
-        const top = (elRect.top - canvasRect.top) / 1;
+        const left = elRect.left - canvasRect.left;
+        const top = elRect.top - canvasRect.top;
 
         const isTitle = el.classList.contains('title-big') || el.classList.contains('title-grid');
         const isBold = isTitle && s.theme.titleBold;
 
-        const svgString = generateTextSVG(text, fontSize, el.offsetWidth, el.offsetHeight, color, textAlign, s.theme.fontFamily, isBold);
+        const svgString = generateTextSVG(text, fontSize, el.offsetWidth, el.offsetHeight, padding, color, textAlign, s.theme.fontFamily, isBold);
         const overlay = document.createElement('div');
         overlay.innerHTML = svgString.trim();
         overlay.style.position = 'absolute';
@@ -198,10 +201,7 @@ function App() {
         overlay.style.top = `${top}px`;
         overlay.style.width = `${el.offsetWidth}px`;
         overlay.style.height = `${el.offsetHeight}px`;
-        overlay.style.display = 'flex';
-        overlay.style.justifyContent = (textAlign === 'center') ? 'center' : 'flex-start';
-        overlay.style.alignItems = 'center';
-        overlay.style.padding = padding;
+        overlay.style.display = 'block';
         overlay.style.pointerEvents = 'none';
         overlay.style.boxSizing = 'border-box';
         overlay.style.zIndex = '100';
@@ -220,7 +220,7 @@ function App() {
         skipFonts: true, 
         backgroundColor: 'transparent',
       });
-      setRenderProgress(100); // Finish: 100
+      setRenderProgress(100); 
 
       overlays.forEach(o => canvas.removeChild(o));
       hiddenElements.forEach(item => item.el.style.opacity = item.originalOpacity);
@@ -378,7 +378,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[13px] font-bold text-gray-200 uppercase">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -400,7 +400,7 @@ function App() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[13px] font-bold text-gray-200 uppercase">与上方素材距离</div>
+                  <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
                   <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -423,7 +423,7 @@ function App() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-[13px] font-bold text-gray-200 uppercase">与上方素材距离</div>
+                    <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
                     <div className="flex items-center gap-3">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />

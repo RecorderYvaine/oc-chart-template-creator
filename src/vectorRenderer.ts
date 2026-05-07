@@ -87,8 +87,9 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string, i
 export function generateTextSVG(
   text: string, 
   fontSize: number, 
-  maxWidth: number, 
-  targetHeight: number,
+  containerWidth: number, 
+  containerHeight: number,
+  padding: { top: number, right: number, bottom: number, left: number },
   color: string, 
   align: 'left' | 'center' = 'center', 
   preferredFamily: string = "", 
@@ -98,13 +99,15 @@ export function generateTextSVG(
   const lineHeightMult = 1.35;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
-  const safeMaxWidth = maxWidth - 2;
+  
+  // Calculate inner width based on padding
+  const innerMaxWidth = containerWidth - padding.left - padding.right - 4;
 
   for (const p of paragraphs) {
     let currentLine = "";
     for (const char of p) {
       const testLine = currentLine + char;
-      if (measureWidth(testLine, fontSize, preferredFamily, isBold) > safeMaxWidth && currentLine.length > 0) {
+      if (measureWidth(testLine, fontSize, preferredFamily, isBold) > innerMaxWidth && currentLine.length > 0) {
         lines.push(currentLine); currentLine = char;
       } else { currentLine = testLine; }
     }
@@ -112,13 +115,16 @@ export function generateTextSVG(
   }
 
   const contentHeight = lines.length * fontSize * lineHeightMult;
-  const startY = (targetHeight - contentHeight) / 2;
+  // Center content vertically within the INNER box
+  const innerHeight = containerHeight - padding.top - padding.bottom;
+  const startY = padding.top + (innerHeight - contentHeight) / 2;
+  
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
     const lineWidth = measureWidth(line, fontSize, preferredFamily, isBold);
-    const yBaseline = startY + (idx + 0.85) * fontSize * lineHeightMult;
-    let x = (align === 'center') ? (maxWidth - lineWidth) / 2 : 0;
+    const yBaseline = startY + (idx + 0.82) * fontSize * lineHeightMult;
+    let x = padding.left + ((align === 'center') ? (innerMaxWidth - lineWidth) / 2 : 0);
     
     for (const char of line) {
       const font = getBestFont(char, preferredFamily, isBold);
@@ -134,7 +140,6 @@ export function generateTextSVG(
       const isNoto = font === fontSerif || font === fontSerifBold || font === fontSans || font === fontSansBold;
       
       const pathData = path.toPathData(4);
-      
       let sw = 0.38;
       if (isBold) {
         sw = isNativeBold ? 0.05 : 0.95;
@@ -147,7 +152,6 @@ export function generateTextSVG(
     }
   });
 
-  // Revert viewBox to match width/height exactly to prevent scaling. 
-  // rely on style overflow:visible for bleed.
-  return `<svg width="${maxWidth}" height="${targetHeight}" viewBox="0 0 ${maxWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
+  // Return SVG that fits the container EXACTLY without fixed pixel dimensions to avoid scaling issues
+  return `<svg viewBox="0 0 ${containerWidth} ${containerHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
 }
