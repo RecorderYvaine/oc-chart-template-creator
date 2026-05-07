@@ -193,7 +193,8 @@ function App() {
           curr = curr.offsetParent as HTMLElement;
         }
 
-        const svgString = generateTextSVG(text, fontSize, width, color, textAlign);
+        // CRITICAL FIX: Pass s.theme.fontFamily to ensure font persistence
+        const svgString = generateTextSVG(text, fontSize, width, color, textAlign, s.theme.fontFamily);
         const overlay = document.createElement('div');
         overlay.innerHTML = svgString.trim();
         overlay.style.position = 'absolute';
@@ -281,7 +282,8 @@ function App() {
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
                     <option value='"HuiwenMincho", serif'>汇文明朝体</option>
-                    <option value='"QijiP1", "QijiP2", "HuiwenMincho", serif'>齐伋体 (Qiji)</option>
+                    {/* UI REFINEMENT: Rename option, remove suffix */}
+                    <option value='"QijiP1", "QijiP2", "HuiwenMincho", serif'>齐伋体</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
