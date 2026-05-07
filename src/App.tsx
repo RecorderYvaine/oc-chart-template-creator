@@ -154,8 +154,8 @@ function App() {
     setZoom(1);
 
     try {
-      // 1. Initialize vector fonts first
-      await initVectorFonts();
+      // 1. Initialize vector fonts first with diagnostic feedback
+      await initVectorFonts((msg) => setExportMessage(msg));
       
       // 2. Wait for layout to settle after zoom change
       await new Promise(r => setTimeout(r, 600));

@@ -9,45 +9,49 @@ let initialized = false;
 
 /**
  * Loads all font files into memory as opentype.js Font objects.
- * Uses local copies where possible to prevent rendering failure.
+ * We now use more reliable URLs and provide better error feedback.
  */
-export async function initVectorFonts() {
+export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
   
-  const fetchFont = async (url: string) => {
+  const fetchFont = async (url: string, name: string) => {
     try {
+      if (onStatus) onStatus(`正在加载字体: ${name}...`);
       const res = await fetch(url);
-      if (!res.ok) return null;
-      return await res.arrayBuffer();
-    } catch { return null; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buffer = await res.arrayBuffer();
+      return opentype.parse(buffer);
+    } catch (e: any) {
+      console.error(`Failed to load font ${name}:`, e);
+      if (onStatus) onStatus(`字体 ${name} 加载失败: ${e.message}`);
+      return null;
+    }
   };
 
+  // We prioritize Qiji and Huiwen as they are local and essential.
+  // For Noto, we use specific OTF files from a reliable CDN with CORS.
   const [p1, p2, hw, serif, sans] = await Promise.all([
-    fetchFont('/qiji-part1.ttf'),
-    fetchFont('/qiji-part2.ttf'),
-    fetchFont('/huiwen-mincho.otf'),
-    fetchFont('https://fonts.gstatic.com/s/notoserifsc/v26/ia4S6D-L89N7p9m87f9uG8_Z4tZ2fV-l.otf'),
-    fetchFont('https://fonts.gstatic.com/s/notosanssc/v26/k3kXo84MPtRZle96SrH5qJ7mYyid7A.otf')
+    fetchFont('/qiji-part1.ttf', '齐伋P1'),
+    fetchFont('/qiji-part2.ttf', '齐伋P2'),
+    fetchFont('/huiwen-mincho.otf', '汇文明朝'),
+    fetchFont('https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Serif/OTF/ChineseSimplified/NotoSerifCJKsc-Regular.otf', '思源宋体'),
+    fetchFont('https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/ChineseSimplified/NotoSansCJKsc-Regular.otf', '思源黑体')
   ]);
 
-  try {
-    if (p1) fontP1 = opentype.parse(p1);
-    if (p2) fontP2 = opentype.parse(p2);
-    if (hw) fontHuiwen = opentype.parse(hw);
-    if (serif) fontSerif = opentype.parse(serif);
-    if (sans) fontSans = opentype.parse(sans);
-  } catch (e) {
-    console.error("Font parsing failed:", e);
-  }
+  fontP1 = p1;
+  fontP2 = p2;
+  fontHuiwen = hw;
+  fontSerif = serif;
+  fontSans = sans;
   
   initialized = true;
+  if (onStatus) onStatus('');
 }
 
 function hasGlyph(font: opentype.Font | null, char: string): boolean {
   if (!font) return false;
   try {
-    const idx = font.charToGlyphIndex(char);
-    return idx > 0;
+    return font.charToGlyphIndex(char) > 0;
   } catch { return false; }
 }
 
@@ -63,7 +67,7 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-    return fontSerif || fontP1!;
+    return fontSerif || fontP1 || fontHuiwen!;
   }
 
   if (isHuiwenMode) {
@@ -78,9 +82,10 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
     return fontHuiwen!;
   }
 
+  // Default Serif mode
   if (hasGlyph(fontSerif, char)) return fontSerif!;
   if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
-  return fontP1!;
+  return fontP1 || fontP2 || fontHuiwen!;
 }
 
 function measureWidth(text: string, fontSize: number, preferredFamily: string): number {
@@ -136,6 +141,7 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
         yOffset = 2; 
       }
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
+      // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.38" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
