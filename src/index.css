@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
-/* 齐伋体分片1 (16MB) */
+/* 齐伋体分片1 (16MB) - 0000-6FFF 范围 */
 @font-face {
-  font-family: 'QijiP1';
+  font-family: 'QijiCombo';
   src: url('/qiji-part1.ttf') format('truetype');
+  unicode-range: U+0000-6FFF;
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
-/* 齐伋体分片2 (24MB) */
+/* 齐伋体分片2 (24MB) - 7000-FFFF 范围 */
 @font-face {
-  font-family: 'QijiP2';
+  font-family: 'QijiCombo';
   src: url('/qiji-part2.ttf') format('truetype');
+  unicode-range: U+7000-FFFF;
   font-weight: normal;
   font-style: normal;
   font-display: swap;

@@ -98,8 +98,7 @@ function App() {
 
   // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiP1"').catch(() => {});
-    document.fonts.load('1em "QijiP2"').catch(() => {});
+    document.fonts.load('1em "QijiCombo"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
@@ -107,17 +106,21 @@ function App() {
   useEffect(() => {
     if (!s.theme) return;
     const isQiji = s.theme.fontFamily.includes('Qiji');
-    const isHuiwen = s.theme.fontFamily.includes('Huiwen');
-    if (isQiji || isHuiwen) {
+    if (isQiji) {
       setIsFontLoading(true);
-      const fontsToLoad = isQiji 
-        ? [document.fonts.load('1em "QijiP1"'), document.fonts.load('1em "QijiP2"')]
-        : [document.fonts.load('1em "HuiwenMincho"')];
-      
-      Promise.all(fontsToLoad)
-        .finally(() => setIsFontLoading(false));
+      // Loading "QijiCombo" will trigger browser to fetch BOTH slices needed for current text
+      Promise.all([
+        document.fonts.load('1em "QijiCombo"'),
+        document.fonts.load('1em "HuiwenMincho"')
+      ]).finally(() => setIsFontLoading(false));
     } else {
-      setIsFontLoading(false);
+      const isHuiwen = s.theme.fontFamily.includes('Huiwen');
+      if (isHuiwen) {
+        setIsFontLoading(true);
+        document.fonts.load('1em "HuiwenMincho"').finally(() => setIsFontLoading(false));
+      } else {
+        setIsFontLoading(false);
+      }
     }
   }, [s.theme.fontFamily]);
 
@@ -132,9 +135,9 @@ function App() {
     r.style.setProperty('--oc-box-bg', s.theme.boxBgColor);
     if (s.theme.fontFamily) {
       let family = s.theme.fontFamily.split('|')[0];
-      // Updated stack strategy: If Qiji is selected, use QijiP1, QijiP2 with Huiwen as fallback
+      // Updated stack strategy: If Qiji is selected, use QijiCombo with Huiwen as fallback
       if (family.includes('Qiji')) {
-        family = '"QijiP1", "QijiP2", "HuiwenMincho", serif';
+        family = '"QijiCombo", "HuiwenMincho", serif';
       } else if (family.includes('Huiwen')) {
         family = '"HuiwenMincho", serif';
       }
@@ -148,6 +151,7 @@ function App() {
     if (!canvasRef.current || isGenerating) return;
     setIsGenerating(true); setExportMessage('正在准备预览...');
     const currentZoom = zoom;
+    // 3x screenshot logic: reset zoom to 1
     if (zoom !== 1) setZoom(1);
     try {
       await document.fonts.ready;
@@ -217,7 +221,7 @@ function App() {
                   <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                     <option value='"Noto Serif SC", serif'>思源宋体</option>
                     <option value='"HuiwenMincho", serif'>汇文明朝体</option>
-                    <option value='"Qiji", serif'>齐伋体</option>
+                    <option value='"QijiCombo", serif'>齐伋体</option>
                     <option value='"Noto Sans SC", sans-serif'>思源黑体</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
@@ -230,11 +234,11 @@ function App() {
                 )}
               </div>
               <div className="flex justify-between items-center py-1">
-                <span className="text-[13px] font-bold text-gray-200">总背景颜色</span>
+                <span className="text-[13px] font-bold text-gray-200 uppercase">总背景颜色</span>
                 <input type="color" value={s.theme.bgColor} onChange={(e) => s.setTheme({ bgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
               </div>
               <div className="flex justify-between items-center py-1">
-                <div className="flex flex-col"><span className="text-[13px] font-bold text-gray-200">格子填充</span><span className="text-[10px] text-gray-500">隐藏即显示背景色</span></div>
+                <div className="flex flex-col"><span className="text-[13px] font-bold text-gray-200 uppercase">格子填充</span><span className="text-[10px] text-gray-500">隐藏即显示背景色</span></div>
                 <div className="flex items-center gap-3">
                   <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
                   <button onClick={() => s.setTheme({ showGridFill: !s.theme.showGridFill })} className={`p-1 rounded-lg transition-colors ${s.theme.showGridFill ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
@@ -267,7 +271,7 @@ function App() {
             <div className="space-y-1">
               {[{l:'主标题',k:'titleSize',m:200},{l:'副标题',k:'subtitleSize',m:100}].map(item => (
                 <div key={item.k} className="flex items-center gap-3 py-1">
-                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-200">{item.l}</span>
+                  <span className="text-[13px] w-14 shrink-0 font-bold text-gray-200 uppercase">{item.l}</span>
                   <input type="range" min="10" max={item.m} value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                   <input type="number" value={(s.theme as any)[item.k]} onChange={(e) => s.setTheme({ [item.k]: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[12px] rounded p-1 text-gray-200" />
                 </div>
@@ -280,13 +284,13 @@ function App() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-[15px] font-bold text-white tracking-tight">格子描述行管理</h2>
+            <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
             <div className="space-y-6 pt-2">
               {/* Grid Title Row */}
               <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
-                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">字体调节</div>
+                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -307,7 +311,7 @@ function App() {
               <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
-                  <div className="text-blue-200 text-[13px] font-bold ml-0.5">字体调节</div>
+                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
                   <div className="flex items-center gap-2">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -329,7 +333,7 @@ function App() {
                 <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
-                    <div className="text-blue-200 text-[13px] font-bold ml-0.5">字体调节</div>
+                    <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
                     <div className="flex items-center gap-2">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
@@ -356,7 +360,7 @@ function App() {
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Columns className="w-4 h-4" /> 布局细节</h2>
             <div className="space-y-1">
-              <div className="flex justify-between items-center py-1"><span className="text-[13px] font-bold text-gray-200">格子比例</span><select className="bg-[#2a2a2a] text-white p-1 rounded-lg outline-none text-xs font-bold border border-[#333]" value={s.theme.boxAspectRatio} onChange={(e) => s.setTheme({ boxAspectRatio: e.target.value })}><option value="1/1">1:1</option><option value="3/4">3:4</option><option value="4/3">4:3</option><option value="9/16">9:16</option><option value="custom">自定义</option></select></div>
+              <div className="flex justify-between items-center py-1"><span className="text-[13px] font-bold text-gray-200 uppercase">格子比例</span><select className="bg-[#2a2a2a] text-white p-1 rounded-lg outline-none text-xs font-bold border border-[#333]" value={s.theme.boxAspectRatio} onChange={(e) => s.setTheme({ boxAspectRatio: e.target.value })}><option value="1/1">1:1</option><option value="3/4">3:4</option><option value="4/3">4:3</option><option value="9/16">9:16</option><option value="custom">自定义</option></select></div>
               {[
                 { label: '格子宽', key: 'boxBaseWidth', min: 50, max: 800 },
                 { label: '格子列间距', key: 'gridGap', min: 0, max: 150, global: true },
