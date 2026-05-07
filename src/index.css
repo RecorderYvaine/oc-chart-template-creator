@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
-/* 齐伋体分片1 (16MB) */
+/* 齐伋体分片1 (16MB) - 使用统一名称 QijiCombo */
 @font-face {
-  font-family: 'QijiPart1';
+  font-family: 'QijiCombo';
   src: url('/qiji-part1.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
-/* 齐伋体分片2 (24MB) */
+/* 齐伋体分片2 (24MB) - 使用统一名称 QijiCombo */
 @font-face {
-  font-family: 'QijiPart2';
+  font-family: 'QijiCombo';
   src: url('/qiji-part2.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;

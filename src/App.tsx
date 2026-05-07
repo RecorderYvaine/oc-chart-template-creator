@@ -98,8 +98,7 @@ function App() {
 
   // Preload fonts immediately on mount
   useEffect(() => {
-    document.fonts.load('1em "QijiPart1"').catch(() => {});
-    document.fonts.load('1em "QijiPart2"').catch(() => {});
+    document.fonts.load('1em "QijiCombo"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
   }, []);
 
@@ -111,7 +110,7 @@ function App() {
     if (isQiji || isHuiwen) {
       setIsFontLoading(true);
       const fontsToLoad = isQiji 
-        ? [document.fonts.load('1em "QijiPart1"'), document.fonts.load('1em "QijiPart2"')]
+        ? [document.fonts.load('1em "QijiCombo"')]
         : [document.fonts.load('1em "HuiwenMincho"')];
       
       Promise.all(fontsToLoad)
@@ -132,9 +131,9 @@ function App() {
     r.style.setProperty('--oc-box-bg', s.theme.boxBgColor);
     if (s.theme.fontFamily) {
       let family = s.theme.fontFamily.split('|')[0];
-      // Updated stack strategy: If Qiji is selected, use both parts with Huiwen as fallback
+      // Updated stack strategy: If Qiji is selected, use QijiCombo with Huiwen as fallback
       if (family.includes('Qiji')) {
-        family = '"QijiPart1", "QijiPart2", "HuiwenMincho", serif';
+        family = '"QijiCombo", "HuiwenMincho", serif';
       } else if (family.includes('Huiwen')) {
         family = '"HuiwenMincho", serif';
       }
@@ -262,7 +261,7 @@ function App() {
             </div>
           </section>
 
-          <section className="space-y-2">
+          <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2">全局大字调节</h2>
             <div className="space-y-1">
               {[{l:'主标题',k:'titleSize',m:200},{l:'副标题',k:'subtitleSize',m:100}].map(item => (
@@ -279,19 +278,22 @@ function App() {
             </div>
           </section>
 
-          <section className="space-y-2">
+          <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white tracking-tight">格子描述行管理</h2>
             <div className="space-y-6 pt-2">
               {/* Grid Title Row */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
-                <div className="flex items-center gap-2">
-                  <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                  <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
-                  <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer" />
+                <div className="space-y-1">
+                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                    <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-500 shrink-0 w-24">与上方素材距离</span>
+                  <span className="text-[13px] font-bold text-blue-200 shrink-0 w-24">与上方素材距离</span>
                   <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                   <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
                   <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
@@ -301,15 +303,18 @@ function App() {
               </div>
 
               {/* Grid Subtitle Row */}
-              <div className="space-y-2 border-t border-white/5 pt-4">
+              <div className="space-y-3 border-t border-white/5 pt-4">
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
-                <div className="flex items-center gap-2">
-                  <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                  <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
-                  <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer" />
+                <div className="space-y-1">
+                  <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                    <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                    <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-500 shrink-0 w-24">与上方素材距离</span>
+                  <span className="text-[13px] font-bold text-blue-200 shrink-0 w-24">与上方素材距离</span>
                   <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                   <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
                   <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
@@ -320,15 +325,18 @@ function App() {
 
               {/* Extra Lines Rows */}
               {extraLineIndices.map(idx => (
-                <div key={idx} className="space-y-2 border-t border-white/5 pt-4">
+                <div key={idx} className="space-y-3 border-t border-white/5 pt-4">
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
-                  <div className="flex items-center gap-2">
-                    <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                    <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
-                    <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer" />
+                  <div className="space-y-1">
+                    <div className="text-blue-300 text-[11px] ml-0.5">字体调节</div>
+                    <div className="flex items-center gap-2">
+                      <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                      <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
+                      <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-gray-500 shrink-0 w-24">与上方素材距离</span>
+                    <span className="text-[13px] font-bold text-blue-200 shrink-0 w-24">与上方素材距离</span>
                     <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-12 bg-[#333] text-center font-bold text-[12px] rounded p-1" />
                     <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
@@ -344,7 +352,7 @@ function App() {
             </div>
           </section>
 
-          <section className="space-y-2">
+          <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Columns className="w-4 h-4" /> 布局细节</h2>
             <div className="space-y-1">
               <div className="flex justify-between items-center py-1"><span className="text-[13px] font-bold text-gray-200">格子比例</span><select className="bg-[#2a2a2a] text-white p-1 rounded-lg outline-none text-xs font-bold border border-[#333]" value={s.theme.boxAspectRatio} onChange={(e) => s.setTheme({ boxAspectRatio: e.target.value })}><option value="1/1">1:1</option><option value="3/4">3:4</option><option value="4/3">4:3</option><option value="9/16">9:16</option><option value="custom">自定义</option></select></div>
@@ -356,7 +364,7 @@ function App() {
                 { label: '作者-表格间距', key: 'authorGridGap', min: 0, max: 300 },
                 { label: '画布总宽', key: 'containerWidth', min: 400, max: 3500, global: true }
               ].map(item => (
-                <div key={item.key} className="space-y-0.5 py-1">
+                <div key={item.key} className="space-y-1 py-1">
                   <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{item.global ? (s as any)[item.key] : (s.theme as any)[item.key]}px</span></div>
                   <div className="flex items-center gap-3">
                     <input type="range" min={item.min} max={item.max} value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
