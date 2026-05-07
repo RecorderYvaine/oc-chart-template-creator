@@ -5,7 +5,7 @@ import {
   ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, 
   X, Search, ZoomIn, ZoomOut, RotateCcw 
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 const isLightColor = (color: string) => {
   const hex = color.replace('#', '');
@@ -14,6 +14,12 @@ const isLightColor = (color: string) => {
   const b = parseInt(hex.substring(4, 6), 16) || 0;
   const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
   return brightness > 155;
+};
+
+const hAR = (e: React.FormEvent<HTMLTextAreaElement>) => {
+  const target = e.currentTarget;
+  target.style.height = 'auto';
+  target.style.height = `${target.scrollHeight}px`;
 };
 
 function PunchHoleBackground({ containerRef, bgColor, isTransparent, zoom, rowCount, colCount, containerWidth }: { 
@@ -143,108 +149,57 @@ function App() {
     setIsGenerating(true); 
     setExportMessage('正在准备预览...');
     
-    const currentZoom = zoom;
+    const originalZoom = zoom;
     if (zoom !== 1) setZoom(1);
 
     try {
       await document.fonts.ready;
-      // Small delay for layout to settle
-      await new Promise(r => setTimeout(r, 500));
+      // Small delay for layout to settle after zoom change
+      await new Promise(r => setTimeout(r, 300));
 
       const original = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      const canvas = await html2canvas(original, { 
-        scale: 3, 
-        backgroundColor: null, 
-        useCORS: true, 
-        allowTaint: true,
-        onclone: (clonedDoc) => {
-          // Add a style to override all modern colors with hex equivalents in the clone
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = `
-            * {
-              color-scheme: light !important;
-              box-shadow: none !important;
-              text-shadow: none !important;
-            }
-            /* html2canvas fails on oklch/oklab. We must force legacy colors. */
-            :root {
-              --color-blue-400: #60a5fa !important;
-              --color-blue-500: #3b82f6 !important;
-              --color-blue-600: #2563eb !important;
-              --color-gray-100: #f3f4f6 !important;
-              --color-gray-200: #e5e7eb !important;
-              --color-gray-300: #d1d5db !important;
-              --color-gray-400: #9ca3af !important;
-              --color-gray-500: #6b7280 !important;
-            }
-          `;
-          clonedDoc.head.appendChild(style);
-          
-          // Re-inject fonts into the clone just in case
-          const fontStyle = clonedDoc.createElement('style');
-          fontStyle.innerHTML = `
-            @font-face { font-family: 'QijiP1'; src: url('${window.location.origin}/qiji-part1.ttf') format('truetype'); }
-            @font-face { font-family: 'QijiP2'; src: url('${window.location.origin}/qiji-part2.ttf') format('truetype'); }
-            @font-face { font-family: 'Huiwen'; src: url('${window.location.origin}/huiwen-mincho.otf') format('opentype'); }
-          `;
-          clonedDoc.head.appendChild(fontStyle);
-        }
+      const dataUrl = await toPng(original, { 
+        quality: 0.95, 
+        pixelRatio: 3, 
+        skipFonts: false,
+        backgroundColor: undefined, // Fully transparent background
       });
-
-      const dataUrl = canvas.toDataURL('image/png');
 
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
       setPreviewUrl(dataUrl);
-    } catch (err: any) { 
-      alert(`预览生成失败: ${err.message}`); 
-    } finally { 
-      if (zoom !== 1) setZoom(currentZoom);
-      setIsGenerating(false); 
-      setExportMessage(''); 
+      setExportMessage('');
+    } catch (err) {
+      console.error(err);
+      setExportMessage('渲染失败，请重试');
+      setTimeout(() => setExportMessage(''), 3000);
+    } finally {
+      setIsGenerating(false);
+      setZoom(originalZoom);
     }
   };
 
-  const handleDownload = () => {
-    if (!previewUrl) return;
-    const link = document.createElement('a');
-    link.download = `oc-chart-${Date.now()}.png`;
-    link.href = previewUrl; 
-    link.click();
-    setPreviewUrl(null);
-  };
+  const maxItemsCount = Math.max(0, ...s.rows.map(r => r.items.length));
+  const naturalTableWidth = maxItemsCount * s.theme.boxBaseWidth + (maxItemsCount - 1) * s.gridGap;
+  const aspectRatioParts = s.theme.boxAspectRatio === 'custom' ? [1, 1] : s.theme.boxAspectRatio.split('/').map(Number);
+  const fixedHeight = (s.theme.boxBaseWidth * aspectRatioParts[1]) / aspectRatioParts[0];
 
-  const hAR = (e: React.FormEvent<HTMLTextAreaElement>) => {
-    const t = e.target as HTMLTextAreaElement;
-    t.style.height = 'auto'; 
-    t.style.height = `${t.scrollHeight}px`;
-  };
-
-  if (!s.theme || !s.rows) return null;
-  const maxExtraLines = Math.max(...s.rows.flatMap(r => r.items.map(i => i.extraLines?.length || 0)), 0);
+  const maxExtraLines = Math.max(0, ...s.rows.flatMap(r => r.items.map(it => it.extraLines?.length || 0)));
   const extraLineIndices = Array.from({ length: maxExtraLines }, (_, i) => i);
-  const parts = s.theme.boxAspectRatio.split('/');
-  const wRef = parseFloat(parts[0]) || 1;
-  const hRef = parseFloat(parts[1]) || 1;
-  const fixedHeight = s.theme.boxBaseWidth * (hRef / wRef);
-  const maxItemsCount = Math.max(...s.rows.map(r => r.items.length), 0);
-  const naturalTableWidth = maxItemsCount * s.theme.boxBaseWidth + (Math.max(0, maxItemsCount - 1) * s.gridGap);
 
   return (
-    <div className="flex h-screen bg-[#1a1a1a] text-gray-300 font-sans overflow-hidden text-[15px]">
-      {/* Preview Modal */}
+    <div className="flex h-screen bg-[#111] text-[#eee] overflow-hidden selection:bg-blue-500/30">
+      {/* Export Preview Modal */}
       {previewUrl && (
-        <div className={`fixed inset-0 z-[100] ${isLightColor(s.theme.bgColor) ? 'bg-black/95' : 'bg-white/95'} backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300`}>
-          <div className="absolute top-6 right-8 flex gap-4">
-             <button onClick={handleDownload} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"><Download className="w-5 h-5" /> 确认下载图片</button>
-             <button onClick={() => setPreviewUrl(null)} className={`p-3 rounded-full shadow-2xl transition-all ${isLightColor(s.theme.bgColor) ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/10 hover:bg-black/20 text-black'}`}><X className="w-6 h-6" /></button>
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+          <button onClick={() => setPreviewUrl(null)} className="absolute top-8 right-8 text-gray-400 hover:text-white p-2 hover:bg-white/10 rounded-full transition-all"><X className="w-8 h-8" /></button>
+          <div className="relative max-w-full max-h-[80vh] group">
+            <img src={previewUrl} className="max-w-full max-h-[80vh] shadow-2xl rounded-sm border border-white/10" alt="Preview" />
+            <a href={previewUrl} download={`oc-form-${Date.now()}.png`} className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Download className="w-5 h-5" /> 下载 PNG 图片</a>
           </div>
-          <div className="w-full h-full flex items-center justify-center overflow-auto mt-12 scrollbar-hide">
-             <img src={previewUrl} className={`max-w-none shadow-[0_0_80px_rgba(0,0,0,0.5)] border ${isLightColor(s.theme.bgColor) ? 'border-white/5' : 'border-black/5'}`} alt="Preview" style={{ zoom: 0.25 }} />
-          </div>
-          <p className={`mt-8 font-medium text-sm ${isLightColor(s.theme.bgColor) ? 'text-gray-400' : 'text-gray-600'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
+          <p className={`mt-24 text-sm font-medium ${isLightColor(s.theme.bgColor) ? 'text-gray-400' : 'text-gray-600'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
         </div>
       )}
 
@@ -399,7 +354,7 @@ function App() {
                   </div>
                 </div>
               ))}
-              <button onClick={s.addExtraLineToAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#333] hover:bg-blue-600/20 border border-[#444] text-gray-300 py-2 rounded-xl transition-all text-xs font-bold shadow-lg"><Plus className="w-4 h-4 text-blue-400" /> 添加一行描述到所有格子</button>
+              <button onClick={s.addExtraLineToAll} className="w-full mt-2 flex items-center justify-center gap-2 bg-[#333] hover:bg-blue-600/20 border border-[#444] text-gray-300 py-2 rounded-xl transition-all text-xs font-bold shadow-lg"><Plus className="w-4 h-4 text-blue-400" />  添加一行描述到所有格子</button>
             </div>
           </section>
 
@@ -436,7 +391,7 @@ function App() {
           </section>
         </div>
         <div className="mt-auto pt-4 border-t border-[#333]">
-          <button disabled={isGenerating} onClick={handleShowPreview} className="w-full bg-white text-black py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 transition-all">{isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} {isGenerating ? '正在渲染...' : '生成预览'}</button>
+          <button disabled={isGenerating} onClick={handleShowPreview} className="w-full bg-white text-black py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 transition-all">{isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} {isGenerating ? '正在渲染...' : ' 生成预览'}</button>
         </div>
       </div>
 
@@ -447,7 +402,7 @@ function App() {
           <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
           <div className="text-center text-xs font-bold text-gray-400 py-1">{Math.round(zoom * 100)}%</div>
           <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
-          <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="重置大小"><RotateCcw className="w-5 h-5" /></button>
+          <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
@@ -481,7 +436,7 @@ function App() {
                       return (
                         <div key={item.id} className="flex flex-col relative group/box transition-all duration-300" style={{ flex: row.fillWidth ? '1 1 0%' : 'none', width: row.fillWidth ? 'auto' : `${s.theme.boxBaseWidth}px` }}>
                           <div className="no-export absolute top-2 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/box:opacity-100 transition-opacity z-20 bg-[#1a1a1a]/95 backdrop-blur-md p-1.5 rounded-xl border border-[#333] items-center text-[10px] shadow-2xl min-w-max transition-all">
-                            <button onClick={() => s.updateItem(row.id, item.id, { showSubtitle: !item.showSubtitle })} className="text-gray-400 hover:text-white px-1">{item.showSubtitle === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                            <button onClick={() => s.updateItem(row.id, item.id, { showSubtitle: item.showSubtitle === false ? true : false })} className="text-gray-400 hover:text-white px-1">{item.showSubtitle === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                             <button onClick={() => s.addExtraLine(row.id, item.id)} className="text-blue-400 hover:text-blue-300 font-bold px-1">+描述</button>
                             <button onClick={() => s.updateItem(row.id, item.id, { textOffsetY: (item.textOffsetY || 0) - 4 })} className="text-gray-400 hover:text-white"><ArrowUp className="w-4 h-4" /></button>
                             <button onClick={() => s.updateItem(row.id, item.id, { textOffsetY: (item.textOffsetY || 0) + 4 })} className="text-gray-400 hover:text-white"><ArrowDown className="w-4 h-4" /></button>
@@ -532,6 +487,9 @@ function App() {
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="no-export absolute -bottom-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={s.addRow} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all"><Plus className="w-4 h-4" /> 添加新行</button>
             </div>
           </div>
         </div>
