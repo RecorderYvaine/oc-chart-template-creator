@@ -39,6 +39,9 @@ interface AppState {
     boxAspectRatio: string;
     boxBgColor: string;
     isTransparentBg: boolean;
+    showBoxBorder: boolean;
+    showGridTitle: boolean;
+    showGridSubtitle: boolean;
     fontFamily: string;
     isDistressed: boolean;
     boxBaseWidth: number;
@@ -79,6 +82,11 @@ interface AppState {
   removeExtraLineIndexFromAll: (index: number) => void;
   updateExtraLine: (rowId: string, itemId: string, lineId: string, data: Partial<TextLine>) => void;
   updateExtraLineSizeGlobal: (index: number, size: number) => void;
+  updateExtraLineColorGlobal: (index: number, color: string) => void;
+  updateGridTitleSizeGlobal: (size: number) => void;
+  updateGridSubtitleSizeGlobal: (size: number) => void;
+  updateGridTitleColorGlobal: (color: string) => void;
+  updateGridSubtitleColorGlobal: (color: string) => void;
 }
 
 const createEmptyItem = (): GridItem => ({
@@ -100,6 +108,9 @@ export const useStore = create<AppState>()((set) => ({
     boxAspectRatio: '3/4',
     boxBgColor: '#ffffff',
     isTransparentBg: false,
+    showBoxBorder: true,
+    showGridTitle: true,
+    showGridSubtitle: true,
     fontFamily: '"Noto Serif SC", serif',
     isDistressed: false,
     boxBaseWidth: 240,
@@ -239,7 +250,9 @@ export const useStore = create<AppState>()((set) => ({
                 i.id === itemId
                   ? {
                       ...i,
-                      extraLines: (i.extraLines || []).map(l => l.id === lineId ? { ...l, ...data } : l),
+                      extraLines: (i.extraLines || []).map((l) =>
+                        l.id === lineId ? { ...l, ...data } : l
+                      ),
                     }
                   : i
               ),
@@ -256,5 +269,45 @@ export const useStore = create<AppState>()((set) => ({
           extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, fontSize: size } : l),
         })),
       })),
+    })),
+  updateExtraLineColorGlobal: (index, color) =>
+    set((state) => ({
+      rows: state.rows.map((r) => ({
+        ...r,
+        items: r.items.map((i) => ({
+          ...i,
+          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, color: color } : l),
+        })),
+      })),
+    })),
+  updateGridTitleSizeGlobal: (size) =>
+    set((state) => ({
+      theme: { ...state.theme, baseTitleSize: size },
+      rows: state.rows.map(r => ({
+        ...r,
+        items: r.items.map(i => ({ ...i, titleSize: size }))
+      }))
+    })),
+  updateGridSubtitleSizeGlobal: (size) =>
+    set((state) => ({
+      theme: { ...state.theme, baseSubtitleSize: size },
+      rows: state.rows.map(r => ({
+        ...r,
+        items: r.items.map(i => ({ ...i, subtitleSize: size }))
+      }))
+    })),
+  updateGridTitleColorGlobal: (color) =>
+    set((state) => ({
+      rows: state.rows.map(r => ({
+        ...r,
+        items: r.items.map(i => ({ ...i, titleColor: color }))
+      }))
+    })),
+  updateGridSubtitleColorGlobal: (color) =>
+    set((state) => ({
+      rows: state.rows.map(r => ({
+        ...r,
+        items: r.items.map(i => ({ ...i, subtitleColor: color }))
+      }))
     })),
 }));
