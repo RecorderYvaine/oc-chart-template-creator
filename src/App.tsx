@@ -168,12 +168,23 @@ function App() {
       
       // Clone the node
       const clone = original.cloneNode(true) as HTMLElement;
+      
+      // Copy essential styles from original to clone to ensure correct rendering
+      const originalStyle = window.getComputedStyle(original);
+      clone.style.cssText = originalStyle.cssText;
       clone.style.position = 'fixed';
-      clone.style.left = '-9999px';
       clone.style.top = '0';
+      clone.style.left = '0';
       clone.style.width = original.offsetWidth + 'px';
       clone.style.height = original.offsetHeight + 'px';
+      clone.style.opacity = '0';
+      clone.style.pointerEvents = 'none';
+      clone.style.zIndex = '-1';
+      
       document.body.appendChild(clone);
+      
+      // Add a small delay for layout computation
+      await new Promise(r => setTimeout(r, 200));
 
       try {
         // Restore no-export elements in original
@@ -200,9 +211,9 @@ function App() {
             const wrapper = document.createElement('div');
             wrapper.innerHTML = svgString.trim();
             wrapper.style.display = 'flex';
-            wrapper.style.flexDirection = 'column';
             wrapper.style.justifyContent = 'center';
-            wrapper.style.alignItems = textAlign === 'center' ? 'center' : 'flex-start';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.overflow = 'visible';
             wrapper.style.width = '100%';
             wrapper.style.height = '100%';
             wrapper.style.padding = padding;
@@ -219,7 +230,7 @@ function App() {
           quality: 1, 
           pixelRatio: 3, 
           skipFonts: true, // Fonts are already vectorized
-          backgroundColor: 'transparent',
+          backgroundColor: undefined, // Fix for transparent bg
         });
 
         setPreviewUrl(dataUrl);
@@ -358,18 +369,18 @@ function App() {
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子标题</div>
                 <div className="space-y-1">
                   <div className="text-blue-300 text-[11px]">字体调节</div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                    <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
+                    <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                    <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
+                    <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                       {s.theme.showGridTitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                   </div>
@@ -381,18 +392,18 @@ function App() {
                 <div className="text-[13px] font-bold text-blue-200 uppercase">格子小字</div>
                 <div className="space-y-1">
                   <div className="text-blue-300 text-[11px]">字体调节</div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                     <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                    <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
+                    <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                     <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                    <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
+                    <button onClick={() => s.setTheme({ showGridSubtitle: !s.theme.showGridSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                       {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>
                   </div>
@@ -405,18 +416,18 @@ function App() {
                   <div className="text-[13px] font-bold text-blue-200 uppercase">第 {idx + 1} 行描述</div>
                   <div className="space-y-1">
                     <div className="text-blue-300 text-[11px]">字体调节</div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                      <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-5 h-5 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
+                      <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                     </div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-blue-200 text-[13px] font-bold">与上方素材距离</div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                       <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
-                      <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 hover:bg-blue-400/10' : 'text-gray-500 hover:text-white'}`}>
+                      <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                         {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </button>
                       <button onClick={() => s.removeExtraLineIndexFromAll(idx)} className="p-1 text-gray-500 hover:text-red-500 transition-colors">
