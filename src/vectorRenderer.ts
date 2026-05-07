@@ -9,45 +9,32 @@ let initialized = false;
 
 /**
  * Loads all font files into memory as opentype.js Font objects.
- * Uses multiple redundant mirrors to ensure 100% success rate.
+ * We now use ONLY local files to ensure 100% reliability and speed.
  */
 export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
   
-  const fetchWithFallback = async (urls: string[], name: string) => {
-    for (const url of urls) {
-      try {
-        if (onStatus) onStatus(`正在尝试从 ${url.includes('gstatic') ? '主站' : '镜像'} 加载 ${name}...`);
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        const buffer = await res.arrayBuffer();
-        const font = opentype.parse(buffer);
-        if (font) return font;
-      } catch (e) {
-        console.warn(`Mirror failed for ${name}: ${url}`, e);
-      }
+  const fetchFont = async (url: string, name: string) => {
+    try {
+      if (onStatus) onStatus(`正在加载本地字体: ${name}...`);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buffer = await res.arrayBuffer();
+      const font = opentype.parse(buffer);
+      return font;
+    } catch (e: any) {
+      console.error(`Failed to load local font ${name}:`, e);
+      if (onStatus) onStatus(`字体 ${name} 加载失败: ${e.message}`);
+      return null;
     }
-    if (onStatus) onStatus(`[错误] ${name} 加载失败`);
-    return null;
   };
 
   const results = await Promise.all([
-    // Qiji and Huiwen are local and must succeed
-    fetchWithFallback(['/qiji-part1.ttf'], '齐伋P1'),
-    fetchWithFallback(['/qiji-part2.ttf'], '齐伋P2'),
-    fetchWithFallback(['/huiwen-mincho.otf'], '汇文明朝'),
-    
-    // Noto Serif SC (Multiple Mirrors)
-    fetchWithFallback([
-      'https://fonts.gstatic.com/s/notoserifsc/v26/ia4S6D-L89N7p9m87f9uG8_Z4tZ2fV-l.otf',
-      'https://mirror.ghproxy.com/https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Serif/OTF/ChineseSimplified/NotoSerifCJKsc-Regular.otf'
-    ], '思源宋体'),
-    
-    // Noto Sans SC (Multiple Mirrors)
-    fetchWithFallback([
-      'https://fonts.gstatic.com/s/notosanssc/v26/k3kXo84MPtRZle96SrH5qJ7mYyid7A.otf',
-      'https://mirror.ghproxy.com/https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/OTF/ChineseSimplified/NotoSansCJKsc-Regular.otf'
-    ], '思源黑体')
+    fetchFont('/qiji-part1.ttf', '齐伋P1'),
+    fetchFont('/qiji-part2.ttf', '齐伋P2'),
+    fetchFont('/huiwen-mincho.otf', '汇文明朝'),
+    fetchFont('/noto-serif.ttf', '思源宋体'),
+    fetchFont('/noto-sans.ttf', '思源黑体')
   ]);
 
   fontP1 = results[0];
@@ -67,11 +54,15 @@ function hasGlyph(font: opentype.Font | null, char: string): boolean {
   } catch { return false; }
 }
 
+/**
+ * Returns the best font for a character based on the user's preferred theme font.
+ */
 function getBestFont(char: string, preferredFamily: string): opentype.Font {
   const isQijiMode = preferredFamily.includes('Qiji');
   const isHuiwenMode = preferredFamily.includes('Huiwen');
   const isSansMode = preferredFamily.includes('Sans');
 
+  // 1. If Qiji mode: P1 -> P2 -> Huiwen
   if (isQijiMode) {
     if (hasGlyph(fontP1, char)) return fontP1!;
     if (hasGlyph(fontP2, char)) return fontP2!;
@@ -79,19 +70,21 @@ function getBestFont(char: string, preferredFamily: string): opentype.Font {
     return fontSerif || fontP1 || fontHuiwen!;
   }
 
+  // 2. If Huiwen mode: Huiwen -> Serif
   if (isHuiwenMode) {
     if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
     if (hasGlyph(fontSerif, char)) return fontSerif!;
     return fontP1 || fontSans!;
   }
 
+  // 3. If Sans mode: Sans -> Serif
   if (isSansMode) {
     if (hasGlyph(fontSans, char)) return fontSans!;
     if (hasGlyph(fontSerif, char)) return fontSerif!;
     return fontHuiwen!;
   }
 
-  // Default Serif mode
+  // 4. Default Serif mode: Serif -> P1
   if (hasGlyph(fontSerif, char)) return fontSerif!;
   if (hasGlyph(fontHuiwen, char)) return fontHuiwen!;
   return fontP1 || fontP2 || fontHuiwen!;
@@ -102,7 +95,9 @@ function measureWidth(text: string, fontSize: number, preferredFamily: string): 
   for (const char of text) {
     const font = getBestFont(char, preferredFamily);
     const glyph = font.charToGlyph(char);
+    
     let currentFontSize = fontSize;
+    // Smart sizing: commas in Huiwen while using Qiji should be slightly smaller
     if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
       currentFontSize = Math.max(10, fontSize - 4);
     }
@@ -143,13 +138,17 @@ export function generateTextSVG(text: string, fontSize: number, maxWidth: number
     for (const char of line) {
       const font = getBestFont(char, preferredFamily);
       const glyph = font.charToGlyph(char);
+      
       let currentFontSize = fontSize;
       let yOffset = 0;
+      // Smart Comma Logic: decrease size by 2px and nudge down if it's fallback Huiwen
       if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
         currentFontSize = Math.max(10, fontSize - 4);
         yOffset = 2; 
       }
+
       const path = glyph.getPath(x, yBaseline + yOffset, currentFontSize);
+      // Precision 5 for sharp rendering. Added tiny stroke to prevent thinning.
       pathElements.push(`<path d="${path.toPathData(5)}" fill="${color}" stroke="${color}" stroke-width="0.38" stroke-linejoin="round" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * currentFontSize / font.unitsPerEm;
     }
