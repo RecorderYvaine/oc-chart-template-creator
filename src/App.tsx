@@ -482,7 +482,7 @@ function App() {
           <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
-        <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
+        <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top" style={{ zoom }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
