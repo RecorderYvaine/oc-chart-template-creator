@@ -555,7 +555,7 @@ function App() {
           <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
-        <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top" style={{ zoom }}>
+        <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top relative group/main pb-24" style={{ zoom }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
             <PunchHoleBackground s={s} canvasRef={canvasRef} />
             <div className="relative z-10 flex flex-col items-center text-center">
@@ -639,9 +639,9 @@ function App() {
                 ))}
               </div>
             </div>
-            <div className="no-export absolute -bottom-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={s.addRow} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all"><Plus className="w-4 h-4" /> 添加新行</button>
-            </div>
+          </div>
+          <div className="no-export absolute bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/main:opacity-100 transition-opacity z-50">
+            <button onClick={s.addRow} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all hover:scale-105"><Plus className="w-4 h-4" /> 添加新行</button>
           </div>
         </div>
       </div>
