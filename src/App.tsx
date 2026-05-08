@@ -135,6 +135,30 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
         });
     });
 
+    // 4. Draw Watermark
+    const watermarks = canvasEl.querySelectorAll('.watermark-text');
+    watermarks.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        const text = htmlEl.innerText || htmlEl.textContent || "";
+        if (!text) return;
+        
+        const style = window.getComputedStyle(htmlEl);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+
+        const rect = htmlEl.getBoundingClientRect();
+        const x = rect.left - rootRect.left;
+        const y = rect.top - rootRect.top;
+        
+        const fontSize = parseFloat(style.fontSize);
+        ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
+        
+        ctx.globalAlpha = parseFloat(style.opacity) || 1;
+        ctx.fillStyle = style.color;
+        ctx.textBaseline = 'top';
+        ctx.fillText(text, x, y);
+        ctx.globalAlpha = 1;
+    });
+
     return canvas.toDataURL('image/png');
 };
 
@@ -638,6 +662,9 @@ function App() {
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="watermark-text absolute bottom-4 right-6 text-[11px] font-bold select-none pointer-events-none opacity-40" style={{ fontFamily: 'var(--oc-font)', color: isLightColor(s.theme.bgColor) ? '#000000' : '#ffffff' }}>
+              使用万界记录者的表格制作工具制作
             </div>
           </div>
           <div className="no-export absolute bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/main:opacity-100 transition-opacity z-50">
