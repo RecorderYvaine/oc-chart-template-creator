@@ -80,8 +80,10 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
 
         let strokeWidth = 0;
         let strokeColor = style.color;
-        if (style.webkitTextStrokeWidth && style.webkitTextStrokeWidth !== '0px') {
-            strokeWidth = parseFloat(style.webkitTextStrokeWidth);
+        // Parse -webkit-text-stroke-width safely
+        const rawStrokeWidth = style.webkitTextStrokeWidth || style.getPropertyValue('-webkit-text-stroke-width');
+        if (rawStrokeWidth && rawStrokeWidth !== '0px' && rawStrokeWidth !== '0') {
+            strokeWidth = parseFloat(rawStrokeWidth);
         }
 
         const paragraphs = text.split('\n');
@@ -122,9 +124,10 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
                 lineX = x + rect.width - padR - ctx.measureText(line).width;
             }
 
-            if (strokeWidth > 0) {
+            if (strokeWidth > 0 && !isNaN(strokeWidth)) {
                 ctx.strokeStyle = strokeColor;
-                ctx.lineWidth = strokeWidth * 2;
+                // DO NOT multiply by 2. Use exact CSS value.
+                ctx.lineWidth = strokeWidth;
                 ctx.lineJoin = 'round';
                 ctx.strokeText(line, lineX, lineY);
             }
