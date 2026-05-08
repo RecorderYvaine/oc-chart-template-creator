@@ -138,6 +138,62 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
     return canvas.toDataURL('image/png');
 };
 
+const PunchHoleBackground = ({ s, canvasRef }: { s: any, canvasRef: React.RefObject<HTMLDivElement | null> }) => {
+  const [path, setPath] = useState('');
+
+  useEffect(() => {
+    if (!s.theme.isTransparentBg || !canvasRef.current) return;
+    const parent = canvasRef.current;
+    let frame: number;
+    const update = () => {
+      const w = parent.offsetWidth;
+      const h = parent.offsetHeight;
+      const boxes = parent.querySelectorAll('.grid-box-inner');
+      let d = `M 0 0 h ${w} v ${h} h -${w} z`;
+      boxes.forEach(box => {
+        const target = box as HTMLElement;
+        let x = 0; let y = 0;
+        let current: HTMLElement | null = target;
+        while (current && current !== parent) {
+          x += current.offsetLeft; y += current.offsetTop;
+          current = current.offsetParent as HTMLElement;
+        }
+        const bw = target.offsetWidth; 
+        const bh = target.offsetHeight;
+        d += ` M ${x} ${y} v ${bh} h ${bw} v -${bh} z`;
+      });
+      setPath(d);
+    };
+
+    const observer = new MutationObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(update);
+    });
+    observer.observe(parent, { childList: true, subtree: true, attributes: true });
+
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(update);
+    });
+    ro.observe(parent);
+
+    update();
+    return () => {
+      observer.disconnect();
+      ro.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [s.theme.isTransparentBg, s.rows, s.theme.boxBaseWidth, s.theme.boxAspectRatio, s.gridGap, s.rowGap, s.containerWidth]);
+
+  if (!s.theme.isTransparentBg) return null;
+
+  return (
+    <svg className="no-export absolute inset-0 w-full h-full pointer-events-none z-0" style={{ fill: s.theme.bgColor }}>
+      <path d={path} fillRule="evenodd" />
+    </svg>
+  );
+};
+
 function App() {
   const s = useStore();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -273,9 +329,12 @@ function App() {
         </div>
       )}
 
-      <div className="w-[340px] border-r border-[#333] bg-[#222] p-5 flex flex-col gap-6 overflow-y-auto shrink-0 z-20 shadow-xl font-sans">
-        <div className="flex items-center gap-3"><Layers className="w-6 h-6 text-blue-500" /><h1 className="text-xl font-bold text-white tracking-tighter uppercase">OC 制表工具</h1></div>
-        <div className="space-y-6">
+      <div className="w-[340px] border-r border-[#333] bg-[#222] flex flex-col shrink-0 z-20 shadow-xl font-sans h-full">
+        <div className="p-5 pb-4 flex flex-col gap-5 border-b border-[#333] shrink-0 bg-[#222] z-50">
+          <div className="flex items-center gap-3"><Layers className="w-6 h-6 text-blue-500" /><h1 className="text-xl font-bold text-white tracking-tighter uppercase">OC 制表工具</h1></div>
+          <button disabled={isGenerating} onClick={handleShowPreview} className="w-full bg-white text-black py-3 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 hover:scale-[1.02] transition-all">{isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />} {isGenerating ? '正在渲染...' : ' 生成预览'}</button>
+        </div>
+        <div className="p-5 flex-1 overflow-y-auto space-y-6">
           <section className="space-y-3">
             <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 样式与字体</h2>
             <div className="space-y-3">
@@ -484,6 +543,7 @@ function App() {
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top" style={{ zoom }}>
           <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
+            <PunchHoleBackground s={s} canvasRef={canvasRef} />
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
@@ -519,7 +579,7 @@ function App() {
                             <button onClick={() => s.updateItem(row.id, item.id, { textOffsetY: (item.textOffsetY || 0) + 4 })} className="text-gray-400 hover:text-white"><ArrowDown className="w-4 h-4" /></button>
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
-                          <div className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: (s.theme.showBoxBorder && s.theme.borderWidth > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: s.theme.showGridFill ? s.theme.boxBgColor : 'transparent' }}>
+                          <div className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: (s.theme.showBoxBorder && s.theme.borderWidth > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: (s.theme.isTransparentBg || !s.theme.showGridFill) ? 'transparent' : s.theme.boxBgColor }}>
                             <textarea className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.showGridFill ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} />
                           </div>
                           <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${item.textOffsetY || 0}px` }}>
