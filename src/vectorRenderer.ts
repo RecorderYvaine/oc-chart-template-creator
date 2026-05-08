@@ -9,9 +9,6 @@ let fontSans: opentype.Font | null = null;
 let fontSansBold: opentype.Font | null = null;
 let initialized = false;
 
-/**
- * Loads all font files into memory as opentype.js Font objects.
- */
 export async function initVectorFonts(onStatus?: (msg: string) => void) {
   if (initialized) return;
   const fetchFont = async (url: string, name: string) => {
@@ -98,10 +95,11 @@ export function generateTextSVG(
   preferredFamily: string = "", 
   isBold: boolean = false
 ) {
+  const isQiji = preferredFamily.includes('Qiji');
   const lineHeightMult = 1.35;
   const lines: string[] = [];
   const paragraphs = text.split('\n');
-  const safeMaxWidth = containerWidth - padding.left - padding.right - 4;
+  const safeMaxWidth = containerWidth - padding.left - padding.right - 2;
 
   for (const p of paragraphs) {
     let currentLine = "";
@@ -115,7 +113,10 @@ export function generateTextSVG(
   }
 
   const contentHeight = lines.length * fontSize * lineHeightMult;
-  const startY = padding.top + (containerHeight - padding.top - padding.bottom - contentHeight) / 2;
+  // Center vertically
+  const innerHeight = containerHeight - padding.top - padding.bottom;
+  const startY = padding.top + (innerHeight - contentHeight) / 2;
+  
   const pathElements: string[] = [];
 
   lines.forEach((line, idx) => {
@@ -128,26 +129,32 @@ export function generateTextSVG(
       const glyph = font.charToGlyph(char);
       let curSize = fontSize; let yOff = 0;
       
-      if (preferredFamily.includes('Qiji') && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
+      if (isQiji && (char === '，' || char === ',') && !hasGlyph(fontP1, char) && !hasGlyph(fontP2, char)) {
         curSize = Math.max(10, fontSize - 4); yOff = 2;
       }
 
       const path = glyph.getPath(x, yBaseline + yOff, curSize);
       
-      // SOLUTION: Use precision 2 to prevent "path self-intersection holes"
-      // and remove stroke for non-bold to keep paths clean.
-      const pathData = path.toPathData(2);
+      // REVERT: Back to high precision (5) to stop CJK glyph distortion/holes.
+      const pathData = path.toPathData(5);
+      
       const isNativeBold = (font === fontSerifBold || font === fontSansBold);
       
-      // Only apply stroke if simulating bold for non-bold font files
-      const needsSimulatedBold = isBold && !isNativeBold;
-      const sw = needsSimulatedBold ? 0.8 : 0;
+      // SOLUTION TO CHIPPING: 
+      // Use paint-order="stroke fill" so the stroke renders BEHIND the fill.
+      // This allows us to thicken the character without stroke artifacts intersecting the fill.
+      let sw = 0;
+      if (isBold) {
+        sw = isNativeBold ? 0.3 : 1.5; // Stronger stroke, but hidden behind fill
+      } else {
+        sw = isQiji ? 0.6 : 0.2; // Slight bolding for Qiji to keep ink weight, Noto gets a tiny anti-alias boost
+      }
 
-      pathElements.push(`<path d="${pathData}" fill="${color}" ${sw > 0 ? `stroke="${color}" stroke-width="${sw}" stroke-linejoin="round"` : ''} />`);
+      pathElements.push(`<path d="${pathData}" fill="${color}" stroke="${color}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round" paint-order="stroke fill" />`);
       x += (glyph.advanceWidth || font.unitsPerEm) * curSize / font.unitsPerEm;
     }
   });
 
-  // Use larger viewBox and overflow:visible to prevent any clipping of flourishes.
-  return `<svg viewBox="-20 -20 ${containerWidth + 40} ${containerHeight + 40}" width="${containerWidth + 40}" height="${containerHeight + 40}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:${containerWidth + 40}px;height:${containerHeight + 40}px;overflow:visible;background:transparent;transform:translate(-20px,-20px);">${pathElements.join('')}</svg>`;
+  // Safe viewBox without crazy negative translations
+  return `<svg width="${containerWidth}" height="${containerHeight}" viewBox="0 0 ${containerWidth} ${containerHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;overflow:visible;background:transparent;">${pathElements.join('')}</svg>`;
 }
