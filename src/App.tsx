@@ -332,7 +332,6 @@ function App() {
       <div className="w-[340px] border-r border-[#333] bg-[#222] flex flex-col shrink-0 z-20 shadow-xl font-sans h-full">
         <div className="p-5 pb-4 flex flex-col gap-5 border-b border-[#333] shrink-0 bg-[#222] z-50">
           <div className="flex items-center gap-3"><Layers className="w-6 h-6 text-blue-500" /><h1 className="text-xl font-bold text-white tracking-tighter uppercase">OC 制表工具</h1></div>
-          <button disabled={isGenerating} onClick={handleShowPreview} className="w-full bg-white text-black py-3 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 hover:scale-[1.02] transition-all">{isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />} {isGenerating ? '正在渲染...' : ' 生成预览'}</button>
         </div>
         <div className="p-5 flex-1 overflow-y-auto space-y-6">
           <section className="space-y-3">
@@ -529,8 +528,8 @@ function App() {
             </div>
           </section>
         </div>
-        <div className="mt-auto pt-4 border-t border-[#333]">
-          <button disabled={isGenerating} onClick={handleShowPreview} className="w-full bg-white text-black py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 transition-all">{isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} {isGenerating ? '正在渲染...' : ' 生成预览'}</button>
+        <div className="p-5 pt-4 border-t border-[#333] shrink-0 bg-[#222]">
+          <button disabled={isGenerating} onClick={handleShowPreview} className="w-full bg-white text-black py-2.5 rounded-xl font-bold text-[14px] flex justify-center items-center gap-2 shadow-lg hover:bg-gray-100 hover:scale-[1.02] transition-all">{isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />} {isGenerating ? '正在渲染...' : ' 生成预览'}</button>
         </div>
       </div>
 
