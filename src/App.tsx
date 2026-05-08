@@ -206,16 +206,20 @@ function App() {
     setZoom(1);
 
     try {
-      setRenderProgress(50);
-      
-      const canvas = canvasRef.current;
-      const noExportEls = document.querySelectorAll('.no-export');
-      noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
-      
+      setRenderProgress(10);
       await new Promise(r => setTimeout(r, 50));
 
-      const dataUrl = await generateNativeScreenshot(canvas, s, 3);
+      const noExportEls = document.querySelectorAll('.no-export');
+      noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
+
+      setRenderProgress(40);
+      await new Promise(r => setTimeout(r, 100)); // Yield to allow progress bar to animate
+
+      // Heavy synchronous rendering
+      const dataUrl = await generateNativeScreenshot(canvasRef.current!, s, 3);
+
       setRenderProgress(100); 
+      await new Promise(r => setTimeout(r, 50));
 
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
 
