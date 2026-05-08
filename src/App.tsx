@@ -324,7 +324,7 @@ function App() {
           <button onClick={() => setPreviewUrl(null)} className={`absolute top-8 right-8 ${previewModalIsLight ? 'text-gray-500 hover:text-black hover:bg-black/5' : 'text-gray-400 hover:text-white hover:bg-white/10'} p-2 rounded-full transition-all`}><X className="w-8 h-8" /></button>
           <div className="relative max-w-full max-h-[80vh] group">
             <img src={previewUrl} className={`max-w-full max-h-[80vh] shadow-2xl rounded-sm border ${previewModalIsLight ? 'border-black/10' : 'border-white/10'}`} alt="Preview" />
-            <a href={previewUrl} download={`oc-form-${Date.now()}.png`} className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all"><Download className="w-5 h-5" /> 下载 PNG 图片</a>
+            <a href={previewUrl} download={`oc-form-${Date.now()}.png`} className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all min-w-max"><Download className="w-5 h-5" /> 下载 PNG 图片</a>
           </div>
           <p className={`mt-24 text-sm font-medium ${previewModalIsLight ? 'text-gray-500' : 'text-gray-400'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
         </div>
