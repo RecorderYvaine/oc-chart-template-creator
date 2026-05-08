@@ -663,7 +663,7 @@ function App() {
                 ))}
               </div>
             </div>
-            <div className="watermark-text absolute bottom-4 right-6 text-[11px] font-bold select-none pointer-events-none opacity-40" style={{ fontFamily: 'var(--oc-font)', color: isLightColor(s.theme.bgColor) ? '#000000' : '#ffffff' }}>
+            <div className="watermark-text absolute bottom-3 right-6 font-bold select-none pointer-events-none opacity-40" style={{ fontFamily: 'var(--oc-font)', fontSize: s.theme.fontFamily.includes('Qiji') ? '13px' : '11px', color: isLightColor(s.theme.bgColor) ? '#000000' : '#ffffff' }}>
               使用万界记录者的表格制作工具制作
             </div>
           </div>
