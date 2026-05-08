@@ -343,11 +343,12 @@ function App() {
         <div className="p-5 flex-1 overflow-y-auto space-y-6">
           {activeTab === 'style' && (
             <>
-              <section className="space-y-3">
-                <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 样式与字体</h2>
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-3 pt-1">
-                    <label className="text-[15px] font-bold text-gray-200 uppercase px-0.5">全局字体选择</label>
+              <section className="space-y-4">
+                <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 全局样式</h2>
+                
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2 pt-1">
+                    <label className="text-[13px] font-bold text-gray-200 uppercase px-0.5">全局字体选择</label>
                     <div className="relative group/select">
                       <select className="w-full bg-[#2a2a2a] text-white p-3 pr-12 rounded-xl outline-none border border-[#333] text-sm font-medium focus:border-blue-500 transition-colors appearance-none cursor-pointer" value={s.theme.fontFamily} onChange={(e) => s.setTheme({ fontFamily: e.target.value })}>
                         <option value='"Noto Serif SC", serif'>思源宋体</option>
@@ -364,43 +365,41 @@ function App() {
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-[13px] font-bold text-gray-200 uppercase">总背景颜色</span>
-                    <input type="color" value={s.theme.bgColor} onChange={(e) => s.setTheme({ bgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
-                  </div>
-                  <div className="flex justify-between items-center py-1">
-                    <div className="flex flex-col"><span className="text-[13px] font-bold text-gray-200 uppercase">格子填充</span><span className="text-[10px] text-gray-500">隐藏即显示背景色</span></div>
-                    <div className="flex items-center gap-3">
-                      <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
-                      <button onClick={() => s.setTheme({ showGridFill: !s.theme.showGridFill })} className={`p-1 rounded-lg transition-colors ${s.theme.showGridFill ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
-                        {s.theme.showGridFill ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
-                    <span className="text-[13px] font-bold text-gray-200 uppercase">透明格子</span>
-                    <input type="checkbox" checked={s.theme.isTransparentBg === true} onChange={(e) => s.setTheme({ isTransparentBg: e.target.checked })} className="w-4 h-4 cursor-pointer accent-blue-500" />
-                  </div>
-                  <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
-                    <span className="text-[13px] font-bold text-gray-200 uppercase">外框线颜色</span>
-                    <div className="flex items-center gap-3">
-                      <input type="color" value={s.theme.borderColor} onChange={(e) => s.setTheme({ borderColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
-                      <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1 rounded-lg transition-colors ${s.theme.showBoxBorder ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
-                        {s.theme.showBoxBorder ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[13px] text-gray-200 font-bold uppercase"><span>线框粗细</span><span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span></div>
-                    <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                  </div>
-                </div>
-              </section>
 
-              <section className="space-y-3">
-                <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2">全局大字调节</h2>
-                <div className="space-y-6 pt-2">
-                  <div className="space-y-3">
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-[13px] font-bold text-gray-200 uppercase">总背景颜色</span>
+                      <input type="color" value={s.theme.bgColor} onChange={(e) => s.setTheme({ bgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <div className="flex flex-col"><span className="text-[13px] font-bold text-gray-200 uppercase">格子填充</span><span className="text-[10px] text-gray-500">隐藏即显示背景色</span></div>
+                      <div className="flex items-center gap-3">
+                        <input type="color" value={s.theme.boxBgColor} onChange={(e) => s.setTheme({ boxBgColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
+                        <button onClick={() => s.setTheme({ showGridFill: !s.theme.showGridFill })} className={`p-1 rounded-lg transition-colors ${s.theme.showGridFill ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                          {s.theme.showGridFill ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
+                      <span className="text-[13px] font-bold text-gray-200 uppercase">透明格子</span>
+                      <input type="checkbox" checked={s.theme.isTransparentBg === true} onChange={(e) => s.setTheme({ isTransparentBg: e.target.checked })} className="w-4 h-4 cursor-pointer accent-blue-500" />
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
+                      <span className="text-[13px] font-bold text-gray-200 uppercase">外框线颜色</span>
+                      <div className="flex items-center gap-3">
+                        <input type="color" value={s.theme.borderColor} onChange={(e) => s.setTheme({ borderColor: e.target.value })} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer" />
+                        <button onClick={() => s.setTheme({ showBoxBorder: !s.theme.showBoxBorder })} className={`p-1 rounded-lg transition-colors ${s.theme.showBoxBorder ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                          {s.theme.showBoxBorder ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1 pb-2">
+                      <div className="flex justify-between text-[13px] text-gray-200 font-bold uppercase"><span>线框粗细</span><span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span></div>
+                      <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-4 border-t border-[#333]">
                     <div className="text-[15px] font-bold text-gray-200 uppercase px-0.5">主标题</div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
@@ -415,7 +414,7 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-3 border-t border-white/5 pt-4">
+                  <div className="space-y-3 border-t border-[#333] pt-4 pb-2">
                     <div className="text-[15px] font-bold text-gray-200 uppercase px-0.5">副标题</div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
@@ -425,10 +424,13 @@ function App() {
                       </div>
                     </div>
                   </div>
+
                 </div>
               </section>
 
-              <section className="space-y-3">
+              <hr className="border-[#444] my-2" />
+
+              <section className="space-y-3 pb-6">
                 <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
                 <div className="space-y-6 pt-2">
                   <div className="space-y-3">
