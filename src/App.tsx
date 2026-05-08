@@ -3,7 +3,7 @@ import { useStore } from './store';
 import { 
   Plus, Trash2, Eye, EyeOff, Palette, Columns, Layers, Loader2, 
   ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, 
-  X, Search, ZoomIn, ZoomOut, RotateCcw 
+  X, Search, ZoomIn, ZoomOut, RotateCcw, AlignLeft 
 } from 'lucide-react';
 
 const isLightColor = (color: string) => {
@@ -344,7 +344,7 @@ function App() {
           {activeTab === 'style' && (
             <>
               <section className="space-y-4">
-                <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 全局样式</h2>
+                <h2 className="text-[17px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Palette className="w-4 h-4" /> 全局样式</h2>
                 
                 <div className="space-y-4">
                   <div className="flex flex-col gap-2 pt-1">
@@ -431,7 +431,7 @@ function App() {
               <hr className="border-[#444] my-2" />
 
               <section className="space-y-3 pb-6">
-                <h2 className="text-[15px] font-bold text-white uppercase tracking-tight">格子描述行管理</h2>
+                <h2 className="text-[17px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><AlignLeft className="w-4 h-4" /> 格子描述行管理</h2>
                 <div className="space-y-6 pt-2">
                   <div className="space-y-3">
                     <div className="text-[15px] font-bold text-gray-200 uppercase px-0.5">格子标题</div>
@@ -444,7 +444,7 @@ function App() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
+                      <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                       <div className="flex items-center gap-3">
                         <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                         <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -466,7 +466,7 @@ function App() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
+                      <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                       <div className="flex items-center gap-3">
                         <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                         <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -489,7 +489,7 @@ function App() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <div className="text-[13px] font-bold text-blue-200 uppercase">与上方素材距离</div>
+                        <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                         <div className="flex items-center gap-3">
                           <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
                           <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
@@ -511,7 +511,7 @@ function App() {
 
           {activeTab === 'layout' && (
             <section className="space-y-3">
-              <h2 className="text-[15px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Columns className="w-4 h-4" /> 布局细节</h2>
+              <h2 className="text-[17px] font-bold text-white uppercase tracking-tight flex items-center gap-2"><Columns className="w-4 h-4" /> 布局细节</h2>
               <div className="space-y-1">
                 <div className="flex justify-between items-center py-1">
                   <span className="text-[13px] font-bold text-gray-200 uppercase">格子比例</span>
