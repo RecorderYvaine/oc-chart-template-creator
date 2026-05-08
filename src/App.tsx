@@ -1,12 +1,10 @@
-import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useStore } from './store';
 import { 
   Plus, Trash2, Eye, EyeOff, Palette, Columns, Layers, Loader2, 
   ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, 
   X, Search, ZoomIn, ZoomOut, RotateCcw 
 } from 'lucide-react';
-import { toPng } from 'html-to-image';
-import { initVectorFonts, generateTextSVG } from './vectorRenderer';
 
 const isLightColor = (color: string) => {
   const hex = color.replace('#', '');
@@ -23,65 +21,119 @@ const hAR = (e: React.FormEvent<HTMLTextAreaElement>) => {
   target.style.height = `${target.scrollHeight}px`;
 };
 
-function PunchHoleBackground({ containerRef, bgColor, isTransparent, zoom, rowCount, colCount, containerWidth }: { 
-  containerRef: React.RefObject<HTMLDivElement | null>, 
-  bgColor: string, 
-  isTransparent: boolean,
-  zoom: number,
-  rowCount: number,
-  colCount: number,
-  containerWidth: number
-}) {
-  const [pathData, setPathData] = useState("");
+const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: number = 3): Promise<string> => {
+    await document.fonts.ready;
+    const rootRect = canvasEl.getBoundingClientRect();
+    const canvas = document.createElement('canvas');
+    canvas.width = rootRect.width * scale;
+    canvas.height = rootRect.height * scale;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
 
-  useLayoutEffect(() => {
-    const update = () => {
-      if (!containerRef.current) return;
-      const parent = containerRef.current;
-      const w = parent.offsetWidth;
-      const h = parent.offsetHeight;
+    // 1. Draw Root Background
+    ctx.fillStyle = s.theme.bgColor;
+    ctx.fillRect(0, 0, rootRect.width, rootRect.height);
 
-      if (!isTransparent) {
-        setPathData(`M 0 0 h ${w} v ${h} h -${w} z`);
-        return;
-      }
+    // 2. Draw Grid Boxes
+    const boxes = canvasEl.querySelectorAll('.grid-box-inner');
+    boxes.forEach(box => {
+        const rect = box.getBoundingClientRect();
+        const x = rect.left - rootRect.left;
+        const y = rect.top - rootRect.top;
 
-      const boxEls = parent.querySelectorAll('.grid-box-inner');
-      let d = `M 0 0 h ${w} v ${h} h -${w} z`;
-
-      boxEls.forEach(el => {
-        const target = el as HTMLElement;
-        let x = 0; let y = 0;
-        let current: HTMLElement | null = target;
-        while (current && current !== parent) {
-          x += current.offsetLeft; y += current.offsetTop;
-          current = current.offsetParent as HTMLElement;
+        if (s.theme.isTransparentBg) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'black';
+            ctx.fillRect(x, y, rect.width, rect.height);
+            ctx.globalCompositeOperation = 'source-over';
+        } else if (s.theme.showGridFill) {
+            ctx.fillStyle = s.theme.boxBgColor;
+            ctx.fillRect(x, y, rect.width, rect.height);
         }
-        const bw = target.offsetWidth; 
-        const bh = target.offsetHeight;
-        d += ` M ${x} ${y} v ${bh} h ${bw} v -${bh} z`;
-      });
-      setPathData(d);
-    };
 
-    update();
-    const timer = setTimeout(update, 200);
-    const observer = new ResizeObserver(update);
-    if (containerRef.current) observer.observe(containerRef.current);
-    window.addEventListener('resize', update);
-    return () => { 
-      clearTimeout(timer); 
-      observer.disconnect(); 
-      window.removeEventListener('resize', update); 
-    };
-  }, [containerRef, isTransparent, zoom, rowCount, colCount, containerWidth, bgColor]);
+        if (s.theme.showBoxBorder && s.theme.borderWidth > 0) {
+            ctx.strokeStyle = s.theme.borderColor;
+            ctx.lineWidth = s.theme.borderWidth;
+            const hlw = ctx.lineWidth / 2;
+            ctx.strokeRect(x + hlw, y + hlw, rect.width - ctx.lineWidth, rect.height - ctx.lineWidth);
+        }
+    });
 
-  return (
-    <svg className="absolute inset-0 z-0 pointer-events-none w-full h-full" xmlns="http://www.w3.org/2000/svg">
-      <path d={pathData} fill={bgColor} fillRule="evenodd" />
-    </svg>
-  );
-}
+    // 3. Draw Texts
+    const textEls = canvasEl.querySelectorAll('textarea, input[type="text"]');
+    textEls.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        const text = (htmlEl as HTMLInputElement).value || (htmlEl as HTMLInputElement).placeholder || "";
+        if (!text) return;
+        
+        const style = window.getComputedStyle(htmlEl);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+
+        const rect = htmlEl.getBoundingClientRect();
+        const x = rect.left - rootRect.left;
+        const y = rect.top - rootRect.top;
+        
+        const fontSize = parseFloat(style.fontSize);
+        ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
+        ctx.fillStyle = style.color;
+        ctx.textBaseline = 'top';
+
+        let strokeWidth = 0;
+        let strokeColor = style.color;
+        if (style.webkitTextStrokeWidth && style.webkitTextStrokeWidth !== '0px') {
+            strokeWidth = parseFloat(style.webkitTextStrokeWidth);
+        }
+
+        const paragraphs = text.split('\n');
+        const lines: string[] = [];
+        const padL = parseFloat(style.paddingLeft) || 0;
+        const padR = parseFloat(style.paddingRight) || 0;
+        const padT = parseFloat(style.paddingTop) || 0;
+        const innerWidth = rect.width - padL - padR;
+
+        for (const p of paragraphs) {
+            let currentLine = "";
+            for (const char of p) {
+                const testLine = currentLine + char;
+                if (ctx.measureText(testLine).width > innerWidth && currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = char;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            if (currentLine) lines.push(currentLine);
+        }
+
+        let lineHeight = parseFloat(style.lineHeight);
+        if (isNaN(lineHeight)) lineHeight = fontSize * 1.2;
+
+        let startY = y + padT + (fontSize * 0.1); 
+        if (htmlEl.tagName.toLowerCase() === 'input') {
+           startY = y + (rect.height - fontSize) / 2 - (fontSize * 0.05);
+        }
+
+        lines.forEach((line, idx) => {
+            const lineY = startY + idx * lineHeight;
+            let lineX = x + padL;
+            if (style.textAlign === 'center') {
+                lineX = x + padL + (innerWidth - ctx.measureText(line).width) / 2;
+            } else if (style.textAlign === 'right') {
+                lineX = x + rect.width - padR - ctx.measureText(line).width;
+            }
+
+            if (strokeWidth > 0) {
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = strokeWidth * 2;
+                ctx.lineJoin = 'round';
+                ctx.strokeText(line, lineX, lineY);
+            }
+            ctx.fillText(line, lineX, lineY);
+        });
+    });
+
+    return canvas.toDataURL('image/png');
+};
 
 function App() {
   const s = useStore();
@@ -151,79 +203,17 @@ function App() {
     setZoom(1);
 
     try {
-      await initVectorFonts();
-      setRenderProgress(15); 
+      setRenderProgress(50);
       
-      await new Promise(r => setTimeout(r, 600)); 
-      setRenderProgress(25); 
-
       const canvas = canvasRef.current;
       const noExportEls = document.querySelectorAll('.no-export');
       noExportEls.forEach(el => (el as HTMLElement).style.display = 'none');
       
-      const textElements = canvas.querySelectorAll('textarea, input');
-      const overlays: HTMLElement[] = [];
-      const hiddenElements: { el: HTMLElement, originalOpacity: string }[] = [];
+      await new Promise(r => setTimeout(r, 50));
 
-      const canvasRect = canvas.getBoundingClientRect();
-
-      for (let i = 0; i < textElements.length; i++) {
-        const el = textElements[i] as (HTMLTextAreaElement | HTMLInputElement);
-        const text = el.value || el.placeholder || "";
-        
-        setRenderProgress(25 + Math.round((i / textElements.length) * 65));
-
-        if (!text) continue;
-
-        const style = window.getComputedStyle(el);
-        const fontSize = parseFloat(style.fontSize);
-        const color = style.color;
-        const textAlign = (style.textAlign || 'center') as 'left' | 'center';
-        const padding = {
-          top: parseFloat(style.paddingTop),
-          right: parseFloat(style.paddingRight),
-          bottom: parseFloat(style.paddingBottom),
-          left: parseFloat(style.paddingLeft)
-        };
-
-        const elRect = el.getBoundingClientRect();
-        const left = elRect.left - canvasRect.left;
-        const top = elRect.top - canvasRect.top;
-
-        const isTitle = el.classList.contains('title-big') || el.classList.contains('title-grid');
-        const isBold = isTitle && s.theme.titleBold;
-
-        const svgString = generateTextSVG(text, fontSize, el.offsetWidth, el.offsetHeight, padding, color, textAlign, s.theme.fontFamily, isBold);
-        const overlay = document.createElement('div');
-        overlay.innerHTML = svgString.trim();
-        overlay.style.position = 'absolute';
-        overlay.style.left = `${left}px`;
-        overlay.style.top = `${top}px`;
-        overlay.style.width = `${el.offsetWidth}px`;
-        overlay.style.height = `${el.offsetHeight}px`;
-        overlay.style.display = 'block';
-        overlay.style.pointerEvents = 'none';
-        overlay.style.boxSizing = 'border-box';
-        overlay.style.zIndex = '100';
-        overlay.style.overflow = 'visible';
-
-        canvas.appendChild(overlay);
-        overlays.push(overlay);
-        
-        hiddenElements.push({ el, originalOpacity: el.style.opacity });
-        el.style.opacity = '0';
-      }
-
-      const dataUrl = await toPng(canvas, { 
-        quality: 1, 
-        pixelRatio: 3, 
-        skipFonts: true, 
-        backgroundColor: 'transparent',
-      });
+      const dataUrl = await generateNativeScreenshot(canvas, s, 3);
       setRenderProgress(100); 
 
-      overlays.forEach(o => canvas.removeChild(o));
-      hiddenElements.forEach(item => item.el.style.opacity = item.originalOpacity);
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
 
       setPreviewUrl(dataUrl);
@@ -486,8 +476,7 @@ function App() {
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-transform duration-200 origin-top" style={{ transform: `scale(${zoom})` }}>
-          <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: 'transparent', isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
-            <PunchHoleBackground containerRef={canvasRef} bgColor={s.theme.bgColor} isTransparent={s.theme.isTransparentBg} zoom={zoom} rowCount={s.rows.length} colCount={maxItemsCount} containerWidth={s.containerWidth} />
+          <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative w-full group/label">
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
@@ -497,8 +486,8 @@ function App() {
               </div>
               <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
               <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.subtitleSize}px`, fontWeight: 'normal' }}>
-                <input className="bg-transparent outline-none placeholder-gray-800 text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
-                <input className="bg-transparent outline-none placeholder-gray-800 text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />
+                <input type="text" className="bg-transparent outline-none placeholder-gray-800 text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
+                <input type="text" className="bg-transparent outline-none placeholder-gray-800 text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />
               </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
