@@ -207,7 +207,7 @@ const PunchHoleBackground = ({ s, canvasRef }: { s: any, canvasRef: React.RefObj
       ro.disconnect();
       cancelAnimationFrame(frame);
     };
-  }, [s.theme.isTransparentBg, s.rows, s.theme.boxBaseWidth, s.theme.boxAspectRatio, s.gridGap, s.rowGap, s.containerWidth]);
+  }, [s.theme.isTransparentBg, s.rows, s.theme.boxBaseWidth, s.theme.boxAspectRatio, s.gridGap, s.rowGap, s.theme.containerPadding]);
 
   if (!s.theme.isTransparentBg) return null;
 
@@ -227,6 +227,9 @@ function App() {
   const [isFontLoading, setIsFontLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [activeTab, setActiveTab] = useState<'style' | 'layout'>('style');
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const prevZoomRef = useRef(1);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -235,9 +238,35 @@ function App() {
         setZoom(z => Math.min(Math.max(z - e.deltaY * 0.01, 0.2), 3));
       }
     };
+    // Use non-passive listener to allow preventDefault
     window.addEventListener('wheel', handleWheel, { passive: false });
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
+
+  React.useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const oldZoom = prevZoomRef.current;
+    if (oldZoom === zoom) return;
+
+    // Calculate center of the viewport relative to the scroll container
+    const centerX = container.scrollLeft + container.clientWidth / 2;
+    const centerY = container.scrollTop + container.clientHeight / 2;
+
+    // Find the unzoomed coordinates of that center point
+    const contentX = centerX / oldZoom;
+    const contentY = centerY / oldZoom;
+
+    // Calculate the new coordinates of that point after zooming
+    const newCenterX = contentX * zoom;
+    const newCenterY = contentY * zoom;
+
+    // Adjust scroll to keep that point in the center of the viewport
+    container.scrollLeft = newCenterX - container.clientWidth / 2;
+    container.scrollTop = newCenterY - container.clientHeight / 2;
+
+    prevZoomRef.current = zoom;
+  }, [zoom]);
 
   useEffect(() => {
     document.fonts.load('1em "QijiP1"').catch(() => {});
@@ -438,13 +467,29 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="space-y-3 border-t border-[#333] pt-4 pb-2">
-                    <div className="text-[15px] font-bold text-gray-200 uppercase px-0.5">副标题</div>
+                  <div className="space-y-3 border-t border-[#333] pt-4">
+                    <div className="flex justify-between items-center px-0.5">
+                      <div className="text-[15px] font-bold text-gray-200 uppercase">全局副标题</div>
+                      <button onClick={() => s.setTheme({ showGlobalSubtitle: !s.theme.showGlobalSubtitle })} className={`p-1 rounded-lg transition-colors ${s.theme.showGlobalSubtitle !== false ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
+                        {s.theme.showGlobalSubtitle !== false ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
+                    </div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max={100} value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.subtitleSize} onChange={(e) => s.setTheme({ subtitleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max={100} value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: parseInt(e.target.value) || 20 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: parseInt(e.target.value) || 20 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 border-t border-[#333] pt-4 pb-2">
+                    <div className="text-[15px] font-bold text-gray-200 uppercase px-0.5">制表与填表人</div>
+                    <div className="space-y-1">
+                      <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
+                      <div className="flex items-center gap-2">
+                        <input type="range" min="10" max="100" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: parseInt(e.target.value) || 18 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: parseInt(e.target.value) || 18 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                   </div>
@@ -548,21 +593,24 @@ function App() {
                   </select>
                 </div>
                 {[
-                  { label: '格子宽', key: 'boxBaseWidth', min: 50, max: 800 },
+                  { label: '格子宽', key: 'boxBaseWidth', min: 50, max: 800, def: 200 },
                   { label: '格子列间距', key: 'gridGap', min: 0, max: 150, global: true },
                   { label: '格子行间距', key: 'rowGap', min: 0, max: 300, global: true },
-                  { label: '大标题-作者间距', key: 'titleAuthorGap', min: 0, max: 200 },
-                  { label: '作者-表格间距', key: 'authorGridGap', min: 0, max: 300 },
-                  { label: '画布总宽', key: 'containerWidth', min: 400, max: 3500, global: true }
-                ].map(item => (
-                  <div key={item.key} className="space-y-1 py-1">
-                    <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{item.global ? (s as any)[item.key] : (s.theme as any)[item.key]}px</span></div>
-                    <div className="flex items-center gap-3">
-                      <input type="range" min={item.min} max={item.max} value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                      <input type="number" value={item.global ? (s as any)[item.key] : (s.theme as any)[item.key]} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
+                  { label: '大标题-作者间距', key: 'titleAuthorGap', min: 0, max: 200, def: 32 },
+                  { label: '作者-表格间距', key: 'authorGridGap', min: 0, max: 300, def: 32 },
+                  { label: '画布边缘间距', key: 'containerPadding', min: 0, max: 200, def: 64 }
+                ].map(item => {
+                  const val = item.global ? (s as any)[item.key] : ((s.theme as any)[item.key] ?? item.def ?? 0);
+                  return (
+                    <div key={item.key} className="space-y-1 py-1">
+                      <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{val}px</span></div>
+                      <div className="flex items-center gap-3">
+                        <input type="range" min={item.min} max={item.max} value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                        <input type="number" value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
@@ -572,7 +620,7 @@ function App() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-12 bg-neutral-800 relative scroll-smooth font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
+      <div ref={scrollRef} className="flex-1 overflow-auto p-12 bg-neutral-800 relative font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
         <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
           <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
           <div className="text-center text-xs font-bold text-gray-400 py-1">{Math.round(zoom * 100)}%</div>
@@ -580,20 +628,26 @@ function App() {
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top relative group/main pb-24" style={{ zoom }}>
-          <div ref={canvasRef} className="p-16 relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, width: `${s.containerWidth}px`, maxWidth: 'none' }}>
+          <div ref={canvasRef} className="inline-flex flex-col items-center relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, padding: `${s.theme.containerPadding ?? 64}px` }}>
             <PunchHoleBackground s={s} canvasRef={canvasRef} />
-            <div className="relative z-10 flex flex-col items-center text-center">
+            <div className="relative z-10 flex flex-col items-center text-center w-full">
               <div className="relative w-full group/label">
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <textarea className="title-big w-full text-center bg-transparent outline-none placeholder-gray-800 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
-              </div>
-              <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
-              <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.subtitleSize}px`, fontWeight: 'normal' }}>
-                <input type="text" className="bg-transparent outline-none placeholder-gray-800 text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
-                <input type="text" className="bg-transparent outline-none placeholder-gray-800 text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />
-              </div>
+                 <textarea className="title-big w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
+                 </div>
+
+                 {s.theme.showGlobalSubtitle !== false && (
+                 <div className="relative w-full group/label mt-2">
+                  <textarea className="w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} rows={1} value={s.globalSubtitle || ''} onInput={hAR} onChange={(e) => s.setGlobalSubtitle(e.target.value)} placeholder="全局副标题" />
+                 </div>
+                 )}
+
+                 <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
+                 <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.authorFillerSize || 18}px`, fontWeight: 'normal' }}>
+                 <input type="text" className="bg-transparent outline-none text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
+                 <input type="text" className="bg-transparent outline-none text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />              </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
             <div className="relative z-10 flex flex-col items-center" style={{ gap: `${s.rowGap}px`, width: '100%' }}>

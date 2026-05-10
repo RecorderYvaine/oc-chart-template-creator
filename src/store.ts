@@ -34,7 +34,7 @@ export interface RowData {
   fillWidth?: boolean;
 }
 
-interface AppState {
+export interface AppState {
   theme: {
     bgColor: string;
     textColor: string;
@@ -57,25 +57,28 @@ interface AppState {
     baseSubtitleSpacing: number;
     baseExtraLineSpacing: number;
     titleSize: number;
-    subtitleSize: number;
+    authorFillerSize: number;
     titleAuthorGap: number;
     authorGridGap: number;
     titleBold: boolean;
+    containerPadding: number;
+    showGlobalSubtitle: boolean;
+    globalSubtitleSize: number;
   };
   title: string;
+  globalSubtitle: string;
   author: string;
   filler: string;
   gridGap: number;
   rowGap: number;
-  containerWidth: number;
   rows: RowData[];
   setTheme: (theme: Partial<AppState['theme']>) => void;
   setTitle: (title: string) => void;
+  setGlobalSubtitle: (t: string) => void;
   setAuthor: (author: string) => void;
   setFiller: (filler: string) => void;
   setGridGap: (gap: number) => void;
   setRowGap: (gap: number) => void;
-  setContainerWidth: (width: number) => void;
   addRow: () => void;
   removeRow: (rowId: string) => void;
   toggleRowFillWidth: (rowId: string) => void;
@@ -133,17 +136,20 @@ export const useStore = create<AppState>()((set) => ({
     baseSubtitleSpacing: 4,
     baseExtraLineSpacing: 4,
     titleSize: 60,
-    subtitleSize: 22,
+    authorFillerSize: 22,
     titleAuthorGap: 24,
     authorGridGap: 48,
     titleBold: true,
+    containerPadding: 64,
+    showGlobalSubtitle: false,
+    globalSubtitleSize: 22,
   },
   title: '大标题',
+  globalSubtitle: '',
   author: '制表人：',
   filler: '填表人：',
   gridGap: 48,
   rowGap: 48,
-  containerWidth: 1000,
   rows: [
     {
       id: generateId(),
@@ -158,11 +164,11 @@ export const useStore = create<AppState>()((set) => ({
   setTheme: (themeUpdate) =>
     set((state) => ({ theme: { ...state.theme, ...themeUpdate } })),
   setTitle: (title) => set({ title }),
+  setGlobalSubtitle: (globalSubtitle) => set({ globalSubtitle }),
   setAuthor: (author) => set({ author }),
   setFiller: (filler) => set({ filler }),
   setGridGap: (gridGap) => set({ gridGap }),
   setRowGap: (rowGap) => set({ rowGap }),
-  setContainerWidth: (containerWidth) => set({ containerWidth }),
   addRow: () =>
     set((state) => {
       const lastRow = state.rows[state.rows.length - 1];
