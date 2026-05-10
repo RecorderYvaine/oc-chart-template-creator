@@ -654,10 +654,12 @@ function App() {
               <div className="flex flex-col" style={{ width: `${naturalTableWidth}px`, gap: `${s.rowGap}px` }}>
                 {s.rows.map((row) => (
                   <div key={row.id} className="flex relative group/row justify-center" style={{ gap: `${s.gridGap}px`, width: '100%' }}>
-                    <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex flex-col gap-2 z-20">
-                      <button onClick={() => s.addItemToRow(row.id)} className="p-1 bg-blue-600 text-white rounded-lg shadow-lg hover:scale-110" title="加格子"><Plus className="w-4 h-4" /></button>
-                      <button onClick={() => s.toggleRowFillWidth(row.id)} className={`p-1 rounded-lg shadow-lg transition-all hover:scale-110 ${row.fillWidth ? 'bg-orange-500 text-white border-orange-400' : 'bg-gray-600 text-gray-200'}`} title="铺满该行"><StretchHorizontal className="w-4 h-4" /></button>
-                      <button onClick={() => s.removeRow(row.id)} className="p-1 bg-red-600 text-white rounded-lg shadow-lg hover:scale-110" title="删行"><Trash2 className="w-4 h-4" /></button>
+                    <div className="no-export absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex flex-col gap-2 z-20">
+                      <button onClick={() => s.toggleRowFillWidth(row.id)} className={`p-2 rounded-xl shadow-lg transition-all hover:scale-110 ${row.fillWidth ? 'bg-orange-500 text-white border-orange-400' : 'bg-[#2a2a2a] text-gray-300 border border-[#444] hover:bg-[#333]'}`} title="铺满该行"><StretchHorizontal className="w-4 h-4" /></button>
+                      <button onClick={() => s.removeRow(row.id)} className="p-2 bg-[#2a2a2a] border border-[#444] text-red-400 rounded-xl shadow-lg hover:bg-red-900/50 hover:scale-110 transition-all" title="删行"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="no-export absolute -right-32 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity z-20">
+                      <button onClick={() => s.addItemToRow(row.id)} className="bg-[#2a2a2a] hover:bg-[#333] border border-[#444] text-gray-300 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all hover:scale-105 whitespace-nowrap"><Plus className="w-4 h-4" /> 添加格子</button>
                     </div>
                     {row.items.map((item) => {
                       const cTS = item.titleSize || s.theme.baseTitleSize; 
@@ -721,8 +723,8 @@ function App() {
               使用万界记录者的表格制作工具制作
             </div>
           </div>
-          <div className="no-export absolute bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/main:opacity-100 transition-opacity z-50">
-            <button onClick={s.addRow} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all hover:scale-105"><Plus className="w-4 h-4" /> 添加新行</button>
+          <div className="no-export absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+            <button onClick={s.addRow} className="bg-[#2a2a2a] hover:bg-[#333] border border-[#444] text-gray-300 px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all hover:scale-105"><Plus className="w-4 h-4" /> 添加新行</button>
           </div>
         </div>
       </div>
