@@ -628,7 +628,7 @@ function App() {
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
         <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top relative group/main pb-24" style={{ zoom }}>
-          <div ref={canvasRef} className="inline-flex flex-col items-center relative shadow-2xl transition-all duration-500 overflow-hidden" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, padding: `${s.theme.containerPadding ?? 64}px` }}>
+          <div ref={canvasRef} className="inline-flex flex-col items-center relative shadow-2xl transition-all duration-500" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, padding: `${s.theme.containerPadding ?? 64}px` }}>
             <PunchHoleBackground s={s} canvasRef={canvasRef} />
             <div className="relative z-10 flex flex-col items-center text-center w-full">
               <div className="relative w-full group/label">
@@ -654,11 +654,11 @@ function App() {
               <div className="flex flex-col" style={{ width: `${naturalTableWidth}px`, gap: `${s.rowGap}px` }}>
                 {s.rows.map((row) => (
                   <div key={row.id} className="flex relative group/row justify-center" style={{ gap: `${s.gridGap}px`, width: '100%' }}>
-                    <div className="no-export absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity flex flex-col gap-2 z-20">
+                    <div className="no-export absolute top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20" style={{ right: `calc(100% + ${(s.theme.containerPadding ?? 64) + 24}px)` }}>
                       <button onClick={() => s.toggleRowFillWidth(row.id)} className={`p-2 rounded-xl shadow-lg transition-all hover:scale-110 ${row.fillWidth ? 'bg-orange-500 text-white border-orange-400' : 'bg-[#2a2a2a] text-gray-300 border border-[#444] hover:bg-[#333]'}`} title="铺满该行"><StretchHorizontal className="w-4 h-4" /></button>
                       <button onClick={() => s.removeRow(row.id)} className="p-2 bg-[#2a2a2a] border border-[#444] text-red-400 rounded-xl shadow-lg hover:bg-red-900/50 hover:scale-110 transition-all" title="删行"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="no-export absolute -right-32 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity z-20">
+                    <div className="no-export absolute top-1/2 -translate-y-1/2 z-20" style={{ left: `calc(100% + ${(s.theme.containerPadding ?? 64) + 24}px)` }}>
                       <button onClick={() => s.addItemToRow(row.id)} className="bg-[#2a2a2a] hover:bg-[#333] border border-[#444] text-gray-300 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all hover:scale-105 whitespace-nowrap"><Plus className="w-4 h-4" /> 添加格子</button>
                     </div>
                     {row.items.map((item) => {
