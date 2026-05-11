@@ -201,6 +201,11 @@ const RichText = ({ value, onChange, placeholder, className, style }: any) => {
         if (html === '<br>') { html = ''; e.currentTarget.innerHTML = ''; }
         onChange(html);
       }}
+      onPaste={(e: React.ClipboardEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text/plain');
+        document.execCommand('insertText', false, text);
+      }}
     />
   );
 };
