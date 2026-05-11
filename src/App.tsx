@@ -72,10 +72,7 @@ const FormatToolbar = () => {
   const restoreSelection = () => {
     const sel = window.getSelection();
     if (sel && savedRange.current) {
-      sel.removeAllRanges();
-      sel.addRange(savedRange.current);
-      
-      // Force focus back to the rich-text container so execCommand knows where to apply
+      // Force focus back to the rich-text container FIRST so execCommand knows where to apply
       let node: Node | null = savedRange.current.startContainer;
       while(node) {
         if ((node as HTMLElement).classList?.contains('rich-text')) {
@@ -84,6 +81,10 @@ const FormatToolbar = () => {
         }
         node = node.parentNode;
       }
+
+      // THEN restore the exact range (focusing can sometimes reset or alter the selection)
+      sel.removeAllRanges();
+      sel.addRange(savedRange.current);
     }
   };
 
