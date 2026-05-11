@@ -620,14 +620,14 @@ function App() {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-auto p-12 bg-neutral-800 relative font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
+      <div ref={scrollRef} className="flex-1 flex overflow-auto p-12 bg-neutral-800 relative font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
         <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
           <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
           <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 py-0.5 w-full">{Math.round(zoom * 100)}%</div>
           <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
-        <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top relative group/main pb-24 px-24" style={{ zoom }}>
+        <div className="flex flex-col items-center min-w-max m-auto transition-all duration-200 relative group/main pb-24 px-24" style={{ zoom }}>
           <div ref={canvasRef} className="inline-flex flex-col items-center relative shadow-2xl transition-all duration-500" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, padding: `${s.theme.containerPadding ?? 64}px` }}>
             <PunchHoleBackground s={s} canvasRef={canvasRef} />
             <div className="relative z-10 flex flex-col items-center text-center w-full">
@@ -635,19 +635,19 @@ function App() {
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <textarea className="title-big w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
+                 <textarea className="title-big w-full text-center bg-transparent outline-none placeholder-gray-400 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
                  </div>
 
                  {s.theme.showGlobalSubtitle !== false && (
                  <div className="relative w-full group/label mt-2">
-                  <textarea className="w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} rows={1} value={s.globalSubtitle || ''} onInput={hAR} onChange={(e) => s.setGlobalSubtitle(e.target.value)} placeholder="全局副标题" />
+                  <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-400 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} rows={1} value={s.globalSubtitle || ''} onInput={hAR} onChange={(e) => s.setGlobalSubtitle(e.target.value)} placeholder="全局副标题" />
                  </div>
                  )}
 
                  <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
                  <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.authorFillerSize || 18}px`, fontWeight: 'normal' }}>
-                 <input type="text" className="bg-transparent outline-none text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
-                 <input type="text" className="bg-transparent outline-none text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />              </div>
+                 <input type="text" className="bg-transparent outline-none placeholder-gray-400 text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
+                 <input type="text" className="bg-transparent outline-none placeholder-gray-400 text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />              </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
             <div className="relative z-10 flex flex-col items-center" style={{ gap: `${s.rowGap}px`, width: '100%' }}>
