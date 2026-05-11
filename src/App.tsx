@@ -134,7 +134,7 @@ const FormatToolbar = () => {
   };
 
   const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value) || 0;
+    const val = e.target.value === '' ? ('' as any) : parseInt(e.target.value);
     setCurrentSize(val);
     applySize(val, true);
   };
@@ -704,7 +704,7 @@ function App() {
                     </div>
                     <div className="space-y-1 pb-2">
                       <div className="flex justify-between text-[13px] text-gray-200 font-bold uppercase"><span>线框粗细</span><span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span></div>
-                      <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseInt(e.target.value) || 0 })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                      <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
                     </div>
                   </div>
 
@@ -713,8 +713,8 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseInt(e.target.value) || 10 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                     <div className="flex justify-between items-center py-1">
@@ -763,16 +763,16 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                        <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                        <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                           {s.theme.showGridTitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
@@ -785,16 +785,16 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                        <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                        <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <button onClick={() => s.updateItem(s.rows[0]?.id, s.rows[0]?.items[0]?.id, { showSubtitle: !s.rows[0]?.items[0]?.showSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                           {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
@@ -808,16 +808,16 @@ function App() {
                       <div className="space-y-1">
                         <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                         <div className="flex items-center gap-3">
-                          <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                          <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                           <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                         </div>
                       </div>
                       <div className="space-y-1">
                         <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                         <div className="flex items-center gap-3">
-                          <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseInt(e.target.value) || 0)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                          <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                           <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                             {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                           </button>
@@ -861,8 +861,8 @@ function App() {
                     <div key={item.key} className="space-y-1 py-1">
                       <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{val}px</span></div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min={item.min} max={item.max} value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                        <input type="number" value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](parseInt(e.target.value) || 0) : s.setTheme({ [item.key]: parseInt(e.target.value) || 0 })} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
+                        <input type="range" min={item.min} max={item.max} value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](e.target.value === '' ? ('' as any) : parseInt(e.target.value)) : s.setTheme({ [item.key]: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                        <input type="number" value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](e.target.value === '' ? ('' as any) : parseInt(e.target.value)) : s.setTheme({ [item.key]: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
                       </div>
                     </div>
                   );
