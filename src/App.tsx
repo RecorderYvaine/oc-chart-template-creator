@@ -15,10 +15,116 @@ const isLightColor = (color: string) => {
   return brightness > 155;
 };
 
-const hAR = (e: React.FormEvent<HTMLTextAreaElement>) => {
-  const target = e.currentTarget;
-  target.style.height = 'auto';
-  target.style.height = `${target.scrollHeight}px`;
+const rgbToHex = (rgb: string) => {
+  const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  if (!match) return rgb;
+  const hex = (x: string) => ("0" + parseInt(x).toString(16)).slice(-2);
+  return "#" + hex(match[1]) + hex(match[2]) + hex(match[3]);
+};
+
+const FormatToolbar = () => {
+  const [pos, setPos] = useState({ top: 0, left: 0, show: false });
+  const [currentSize, setCurrentSize] = useState(30);
+  const [currentColor, setCurrentColor] = useState('#ffffff');
+
+  useEffect(() => {
+    const handleSelection = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+        let node: Node | null = sel.anchorNode;
+        let isRich = false;
+        while(node) {
+          if ((node as HTMLElement).classList?.contains('rich-text')) {
+             isRich = true;
+             break;
+          }
+          node = node.parentNode;
+        }
+        if (isRich) {
+          const rect = sel.getRangeAt(0).getBoundingClientRect();
+          const parent = sel.anchorNode?.parentElement;
+          if (parent) {
+             const style = window.getComputedStyle(parent);
+             setCurrentColor(rgbToHex(style.color));
+             setCurrentSize(parseFloat(style.fontSize) || 30);
+          }
+          setPos({ top: rect.top - 50, left: rect.left + rect.width / 2, show: true });
+          return;
+        }
+      }
+      setPos(p => ({...p, show: false}));
+    };
+    document.addEventListener('selectionchange', handleSelection);
+    return () => document.removeEventListener('selectionchange', handleSelection);
+  }, []);
+
+  if (!pos.show) return null;
+
+  const applyColor = (color: string) => {
+    setCurrentColor(color);
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('foreColor', false, color);
+    triggerInput();
+  };
+
+  const applySize = (newSize: number) => {
+    setCurrentSize(newSize);
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('fontSize', false, '7'); 
+    const fonts = document.querySelectorAll('font[size="7"]');
+    fonts.forEach(f => {
+      f.removeAttribute('size');
+      (f as HTMLElement).style.fontSize = `${newSize}px`;
+    });
+    triggerInput();
+  };
+
+  const triggerInput = () => {
+    const sel = window.getSelection();
+    if (sel && sel.anchorNode) {
+       let node: Node | null = sel.anchorNode;
+       while(node && !(node as HTMLElement).classList?.contains('rich-text')) {
+         node = node.parentNode;
+       }
+       if (node) {
+         node.dispatchEvent(new Event('input', { bubbles: true }));
+       }
+    }
+  };
+
+  return (
+    <div className="fixed z-[200] bg-[#222] border border-[#444] shadow-2xl rounded-xl p-2 flex items-center gap-2 transform -translate-x-1/2" style={{ top: pos.top, left: pos.left }}>
+       <input type="color" value={currentColor} onChange={e => applyColor(e.target.value)} className="w-6 h-6 border-0 p-0 bg-transparent cursor-pointer" />
+       <div className="flex items-center gap-1 bg-[#111] rounded px-1">
+         <button onMouseDown={(e) => { e.preventDefault(); applySize(Math.max(10, currentSize - 2)); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">-</button>
+         <span className="text-white text-xs w-6 text-center">{currentSize}</span>
+         <button onMouseDown={(e) => { e.preventDefault(); applySize(currentSize + 2); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">+</button>
+       </div>
+    </div>
+  );
+};
+
+const RichText = ({ value, onChange, placeholder, className, style }: any) => {
+  const ref = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (ref.current && ref.current.innerHTML !== value) {
+      ref.current.innerHTML = value;
+    }
+  }, [value]);
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      className={`rich-text ${className} cursor-text empty:before:content-[attr(placeholder)] empty:before:text-gray-400`}
+      style={{ ...style, minHeight: '1em' }}
+      {...({ placeholder } as any)}
+      onInput={(e: React.FormEvent<HTMLDivElement>) => onChange(e.currentTarget.innerHTML)}
+      onBlur={(e: React.FocusEvent<HTMLDivElement>) => onChange(e.currentTarget.innerHTML)}
+    />
+  );
 };
 
 const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: number = 3): Promise<string> => {
@@ -60,79 +166,151 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
     });
 
     // 3. Draw Texts
-    const textEls = canvasEl.querySelectorAll('textarea, input[type="text"]');
+    const textEls = canvasEl.querySelectorAll('.rich-text');
     textEls.forEach(el => {
         const htmlEl = el as HTMLElement;
-        const text = (htmlEl as HTMLInputElement).value || (htmlEl as HTMLInputElement).placeholder || "";
-        if (!text) return;
-        
-        const style = window.getComputedStyle(htmlEl);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
+        const computedStyle = window.getComputedStyle(htmlEl);
+        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') return;
+
+        let html = htmlEl.innerHTML;
+        let isPlaceholder = false;
+        if (!html || html === '<br>') {
+           html = htmlEl.getAttribute('placeholder') || '';
+           isPlaceholder = true;
+        }
+        if (!html) return;
 
         const rect = htmlEl.getBoundingClientRect();
         const x = rect.left - rootRect.left;
         const y = rect.top - rootRect.top;
         
-        const fontSize = parseFloat(style.fontSize);
-        ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
-        ctx.fillStyle = style.color;
-        ctx.textBaseline = 'top';
+        const defaultSize = parseFloat(computedStyle.fontSize);
+        const defaultColor = isPlaceholder ? '#9ca3af' : computedStyle.color; 
+        const defaultBold = computedStyle.fontWeight === 'bold' || parseInt(computedStyle.fontWeight) >= 700;
+        const defaultFamily = computedStyle.fontFamily;
+        const textAlign = computedStyle.textAlign;
 
         let strokeWidth = 0;
-        let strokeColor = style.color;
-        // Parse -webkit-text-stroke-width safely
-        const rawStrokeWidth = style.webkitTextStrokeWidth || style.getPropertyValue('-webkit-text-stroke-width');
+        let strokeColor = defaultColor;
+        const rawStrokeWidth = computedStyle.webkitTextStrokeWidth || computedStyle.getPropertyValue('-webkit-text-stroke-width');
         if (rawStrokeWidth && rawStrokeWidth !== '0px' && rawStrokeWidth !== '0') {
             strokeWidth = parseFloat(rawStrokeWidth);
         }
 
-        const paragraphs = text.split('\n');
-        const lines: string[] = [];
-        const padL = parseFloat(style.paddingLeft) || 0;
-        const padR = parseFloat(style.paddingRight) || 0;
-        const padT = parseFloat(style.paddingTop) || 0;
+        const tempNode = document.createElement('div');
+        tempNode.innerHTML = html;
+        const segments: any[] = [];
+        
+        function traverse(node: Node, color: string, size: number, isBold: boolean) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent || "";
+                for (const char of text) {
+                    segments.push({ char, color, fontSize: size, isBold, fontFamily: defaultFamily });
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const nodeEl = node as HTMLElement;
+                let newColor = color;
+                let newSize = size;
+                let newBold = isBold;
+
+                if (nodeEl.style.color) newColor = nodeEl.style.color;
+                if (nodeEl.style.fontSize) {
+                    const parsed = parseFloat(nodeEl.style.fontSize);
+                    if (!isNaN(parsed)) newSize = parsed;
+                }
+                if (nodeEl.style.fontWeight === 'bold' || nodeEl.tagName === 'B' || nodeEl.tagName === 'STRONG') {
+                    newBold = true;
+                }
+
+                if (nodeEl.tagName === 'BR' || nodeEl.tagName === 'DIV') {
+                    if (segments.length > 0 && segments[segments.length - 1].char !== '\n') {
+                        segments.push({ char: '\n', color: newColor, fontSize: newSize, isBold: newBold, fontFamily: defaultFamily });
+                    }
+                }
+
+                nodeEl.childNodes.forEach(child => traverse(child, newColor, newSize, newBold));
+            }
+        }
+        traverse(tempNode, defaultColor, defaultSize, defaultBold);
+
+        const linesOfSegments: any[][] = [];
+        let currentLineSegments: any[] = [];
+        for(const seg of segments) {
+            if (seg.char === '\n') {
+                linesOfSegments.push(currentLineSegments);
+                currentLineSegments = [];
+            } else {
+                currentLineSegments.push(seg);
+            }
+        }
+        if (currentLineSegments.length > 0) linesOfSegments.push(currentLineSegments);
+
+        const padL = parseFloat(computedStyle.paddingLeft) || 0;
+        const padR = parseFloat(computedStyle.paddingRight) || 0;
+        const padT = parseFloat(computedStyle.paddingTop) || 0;
         const innerWidth = rect.width - padL - padR;
 
-        for (const p of paragraphs) {
-            let currentLine = "";
-            for (const char of p) {
-                const testLine = currentLine + char;
-                if (ctx.measureText(testLine).width > innerWidth && currentLine.length > 0) {
-                    lines.push(currentLine);
-                    currentLine = char;
+        const wrappedLines: any[][] = [];
+        for(const line of linesOfSegments) {
+            let currentWrappedLine: any[] = [];
+            let currentWidth = 0;
+            for(const seg of line) {
+                ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
+                const w = ctx.measureText(seg.char).width;
+                if (currentWidth + w > innerWidth && currentWrappedLine.length > 0) {
+                    wrappedLines.push(currentWrappedLine);
+                    currentWrappedLine = [seg];
+                    currentWidth = w;
                 } else {
-                    currentLine = testLine;
+                    currentWrappedLine.push(seg);
+                    currentWidth += w;
                 }
             }
-            if (currentLine) lines.push(currentLine);
+            if (currentWrappedLine.length > 0) wrappedLines.push(currentWrappedLine);
         }
 
-        let lineHeight = parseFloat(style.lineHeight);
-        if (isNaN(lineHeight)) lineHeight = fontSize * 1.2;
-
-        let startY = y + padT + (fontSize * 0.1); 
-        if (htmlEl.tagName.toLowerCase() === 'input') {
-           startY = y + (rect.height - fontSize) / 2 - (fontSize * 0.05);
+        let startY = y + padT;
+        if (htmlEl.classList.contains('single-line-center')) {
+           startY = y + (rect.height - defaultSize) / 2;
+        } else {
+           startY += defaultSize * 0.1;
         }
 
-        lines.forEach((line, idx) => {
-            const lineY = startY + idx * lineHeight;
-            let lineX = x + padL;
-            if (style.textAlign === 'center') {
-                lineX = x + padL + (innerWidth - ctx.measureText(line).width) / 2;
-            } else if (style.textAlign === 'right') {
-                lineX = x + rect.width - padR - ctx.measureText(line).width;
+        let currentY = startY;
+        for(const wLine of wrappedLines) {
+            let maxFontSize = defaultSize;
+            let lineWidth = 0;
+            for(const seg of wLine) {
+                if (seg.fontSize > maxFontSize) maxFontSize = seg.fontSize;
+                ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
+                lineWidth += ctx.measureText(seg.char).width;
+            }
+            
+            let lineHeight = maxFontSize * 1.2;
+            let currentX = x + padL;
+            if (textAlign === 'center') {
+                currentX += (innerWidth - lineWidth) / 2;
+            } else if (textAlign === 'right') {
+                currentX += (innerWidth - lineWidth);
             }
 
-            if (strokeWidth > 0 && !isNaN(strokeWidth)) {
-                ctx.strokeStyle = strokeColor;
-                // DO NOT multiply by 2. Use exact CSS value.
-                ctx.lineWidth = strokeWidth;
-                ctx.lineJoin = 'round';
-                ctx.strokeText(line, lineX, lineY);
+            for(const seg of wLine) {
+                ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
+                ctx.fillStyle = seg.color;
+                ctx.textBaseline = 'alphabetic';
+                const charY = currentY + maxFontSize; 
+                
+                if (strokeWidth > 0 && !isNaN(strokeWidth) && !isPlaceholder) {
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = strokeWidth;
+                    ctx.lineJoin = 'round';
+                    ctx.strokeText(seg.char, currentX, charY);
+                }
+                ctx.fillText(seg.char, currentX, charY);
+                currentX += ctx.measureText(seg.char).width;
             }
-            ctx.fillText(line, lineX, lineY);
-        });
+            currentY += lineHeight;
+        }
     });
 
     // 4. Draw Watermark
@@ -355,6 +533,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#111] text-[#eee] overflow-hidden selection:bg-blue-500/30">
+      <FormatToolbar />
       {isGenerating && (
         <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="flex flex-col items-center gap-6">
@@ -635,19 +814,19 @@ function App() {
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <textarea className="title-big w-full text-center bg-transparent outline-none placeholder-gray-400 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} rows={1} value={s.title} onInput={hAR} onChange={(e) => s.setTitle(e.target.value)} placeholder="大标题" />
+                 <RichText className="title-big w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} value={s.title} onChange={(val: string) => s.setTitle(val)} placeholder="大标题" />
                  </div>
 
                  {s.theme.showGlobalSubtitle !== false && (
                  <div className="relative w-full group/label mt-2">
-                  <textarea className="w-full text-center bg-transparent outline-none placeholder-gray-400 tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} rows={1} value={s.globalSubtitle || ''} onInput={hAR} onChange={(e) => s.setGlobalSubtitle(e.target.value)} placeholder="全局副标题" />
+                  <RichText className="w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} value={s.globalSubtitle || ''} onChange={(val: string) => s.setGlobalSubtitle(val)} placeholder="全局副标题" />
                  </div>
                  )}
 
                  <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
                  <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.authorFillerSize || 18}px`, fontWeight: 'normal' }}>
-                 <input type="text" className="bg-transparent outline-none placeholder-gray-400 text-left w-1/3 block p-0" value={s.author} onChange={(e) => s.setAuthor(e.target.value)} placeholder="制表人：" />
-                 <input type="text" className="bg-transparent outline-none placeholder-gray-400 text-left w-1/2 block ml-32 p-0" value={s.filler} onChange={(e) => s.setFiller(e.target.value)} placeholder="填表人：" />              </div>
+                 <RichText className="bg-transparent outline-none text-left w-1/3 block p-0 single-line-center" value={s.author} onChange={(val: string) => s.setAuthor(val)} placeholder="制表人：" />
+                 <RichText className="bg-transparent outline-none text-left w-1/2 block ml-32 p-0 single-line-center" value={s.filler} onChange={(val: string) => s.setFiller(val)} placeholder="填表人：" />              </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
             <div className="relative z-10 flex flex-col items-center" style={{ gap: `${s.rowGap}px`, width: '100%' }}>
@@ -674,7 +853,7 @@ function App() {
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
                           <div className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: (s.theme.showBoxBorder && s.theme.borderWidth > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: (s.theme.isTransparentBg || !s.theme.showGridFill) ? 'transparent' : s.theme.boxBgColor }}>
-                            <textarea className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.showGridFill ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor }} value={item.content} onChange={(e) => s.updateItem(row.id, item.id, { content: e.target.value })} />
+                            <RichText className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.showGridFill ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor }} value={item.content} onChange={(val: string) => s.updateItem(row.id, item.id, { content: val })} />
                           </div>
                           <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${item.textOffsetY || 0}px` }}>
                             {s.theme.showGridTitle !== false && (
@@ -684,7 +863,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea className="title-grid w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { title: e.target.value })} placeholder="格子标题" />
+                                <RichText className="title-grid w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onChange={(val: string) => s.updateItem(row.id, item.id, { title: val })} placeholder="格子标题" />
                               </div>
                             )}
                             {(s.theme.showGridSubtitle !== false && item.showSubtitle !== false) && (
@@ -694,7 +873,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onInput={hAR} onChange={(e) => s.updateItem(row.id, item.id, { subtitle: e.target.value })} placeholder="格子小字" />
+                                <RichText className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onChange={(val: string) => s.updateItem(row.id, item.id, { subtitle: val })} placeholder="格子小字" />
                               </div>
                             )}
                             {item.extraLines?.map((line, lineIndex) => {
@@ -707,7 +886,7 @@ function App() {
                                      <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
                                      <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
                                   </div>
-                                  <textarea className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" rows={1} style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onInput={hAR} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { text: e.target.value })} placeholder={`描述行 ${lineIndex + 1}`} />
+                                  <RichText className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onChange={(val: string) => s.updateExtraLine(row.id, item.id, line.id, { text: val })} placeholder={`描述行 ${lineIndex + 1}`} />
                                 </div>
                               );
                             })}
