@@ -816,8 +816,8 @@ function App() {
                       <div className="space-y-1">
                         <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                         <div className="flex items-center gap-3">
-                          <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing || s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                          <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing ?? s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing ?? s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                           <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                             {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                           </button>
