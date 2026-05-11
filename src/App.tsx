@@ -394,7 +394,7 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
             for(const seg of wLine) {
                 ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
                 ctx.fillStyle = seg.color;
-                ctx.textBaseline = 'alphabetic';
+                ctx.textBaseline = 'bottom';
                 const charY = currentY + maxFontSize; 
                 
                 if (strokeWidth > 0 && !isNaN(strokeWidth) && !isPlaceholder) {
