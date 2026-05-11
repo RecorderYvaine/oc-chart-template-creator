@@ -891,12 +891,12 @@ function App() {
                  <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                     <input type="color" value={s.theme.textColor} onChange={(e) => s.setTheme({ textColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
                  </div>
-                 <RichText className="title-big w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} value={s.title} onChange={(val: string) => s.setTitle(val)} placeholder="大标题" />
+                 <RichText className="title-big w-full text-center bg-transparent outline-none tracking-wider resize-none block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.titleSize}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1, whiteSpace: 'pre-wrap' }} value={s.title} onChange={(val: string) => s.setTitle(val)} placeholder="大标题" />
                  </div>
 
                  {s.theme.showGlobalSubtitle !== false && (
                  <div className="relative w-full group/label mt-2">
-                  <RichText className="w-full text-center bg-transparent outline-none tracking-wider resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} value={s.globalSubtitle || ''} onChange={(val: string) => s.setGlobalSubtitle(val)} placeholder="全局副标题" />
+                  <RichText className="w-full text-center bg-transparent outline-none tracking-wider resize-none block p-0" style={{ fontFamily: 'var(--oc-font)', color: s.theme.textColor, fontSize: `${s.theme.globalSubtitleSize || 20}px`, fontWeight: 'normal', lineHeight: 1.2, whiteSpace: 'pre-wrap' }} value={s.globalSubtitle || ''} onChange={(val: string) => s.setGlobalSubtitle(val)} placeholder="全局副标题" />
                  </div>
                  )}
 
@@ -940,7 +940,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (Number(item.titleSize || s.theme.baseTitleSize) || 0) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (Number(item.titleSize || s.theme.baseTitleSize) || 0) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <RichText className="title-grid w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onChange={(val: string) => s.updateItem(row.id, item.id, { title: val })} placeholder="格子标题" />
+                                <RichText className="title-grid w-full text-center bg-transparent outline-none resize-none block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onChange={(val: string) => s.updateItem(row.id, item.id, { title: val })} placeholder="格子标题" />
                               </div>
                             )}
                             {(s.theme.showGridSubtitle !== false && item.showSubtitle !== false) && (
@@ -950,7 +950,7 @@ function App() {
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (Number(item.subtitleSize || s.theme.baseSubtitleSize) || 0) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
                                    <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (Number(item.subtitleSize || s.theme.baseSubtitleSize) || 0) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
-                                <RichText className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onChange={(val: string) => s.updateItem(row.id, item.id, { subtitle: val })} placeholder="格子小字" />
+                                <RichText className="w-full text-center bg-transparent outline-none resize-none block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onChange={(val: string) => s.updateItem(row.id, item.id, { subtitle: val })} placeholder="格子小字" />
                               </div>
                             )}
                             {item.extraLines?.map((line, lineIndex) => {
@@ -963,7 +963,7 @@ function App() {
                                      <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (Number(line.fontSize || s.theme.baseExtraLineSize) || 0) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
                                      <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
                                   </div>
-                                  <RichText className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onChange={(val: string) => s.updateExtraLine(row.id, item.id, line.id, { text: val })} placeholder={`描述行 ${lineIndex + 1}`} />
+                                  <RichText className="w-full text-center bg-transparent outline-none resize-none block p-0" style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onChange={(val: string) => s.updateExtraLine(row.id, item.id, line.id, { text: val })} placeholder={`描述行 ${lineIndex + 1}`} />
                                 </div>
                               );
                             })}
