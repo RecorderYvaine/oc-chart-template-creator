@@ -82,9 +82,16 @@ const FormatToolbar = () => {
         node = node.parentNode;
       }
 
-      // THEN restore the exact range (focusing can sometimes reset or alter the selection)
+      // THEN restore the exact range
       sel.removeAllRanges();
       sel.addRange(savedRange.current);
+    }
+  };
+
+  const updateSavedRange = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRange.current = sel.getRangeAt(0).cloneRange();
     }
   };
 
@@ -94,6 +101,7 @@ const FormatToolbar = () => {
     document.execCommand('styleWithCSS', false, 'true');
     document.execCommand('foreColor', false, color);
     triggerInput();
+    updateSavedRange();
   };
 
   const applySize = (newSize: number, keepFocus: boolean = false) => {
@@ -101,27 +109,27 @@ const FormatToolbar = () => {
     restoreSelection();
     setCurrentSize(newSize);
     
-    // Turn OFF styleWithCSS to force the browser to generate <font size="7">
-    document.execCommand('styleWithCSS', false, 'false');
-    document.execCommand('fontSize', false, '7'); 
+    document.execCommand('styleWithCSS', false, 'true');
     
-    const fonts = document.querySelectorAll('font[size="7"]');
-    fonts.forEach(f => {
-      f.removeAttribute('size');
-      (f as HTMLElement).style.fontSize = `${newSize}px`;
+    // We use a completely unique font name as a marker to find the EXACT nodes execCommand wraps.
+    // This bypasses all the browser quirks where fontSize=7 fails or snaps to 48px.
+    const marker = 'MARKER_SIZE_HACK';
+    document.execCommand('fontName', false, marker); 
+    
+    const els = document.querySelectorAll(`font[face="${marker}"], [style*="${marker}"]`);
+    els.forEach(el => {
+      const e = el as HTMLElement;
+      if (e.tagName === 'FONT') e.removeAttribute('face');
+      e.style.fontFamily = ''; // Remove the marker
+      e.style.fontSize = `${newSize}px`; // Apply precise pixel size
+      if (e.getAttribute('style') === '') e.removeAttribute('style');
     });
     
-    // Turn it back on for future color commands
-    document.execCommand('styleWithCSS', false, 'true');
     triggerInput();
+    updateSavedRange();
 
     if (keepFocus && inputRef.current) {
       inputRef.current.focus();
-    } else {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        savedRange.current = sel.getRangeAt(0).cloneRange();
-      }
     }
   };
 
