@@ -74,6 +74,16 @@ const FormatToolbar = () => {
     if (sel && savedRange.current) {
       sel.removeAllRanges();
       sel.addRange(savedRange.current);
+      
+      // Force focus back to the rich-text container so execCommand knows where to apply
+      let node: Node | null = savedRange.current.startContainer;
+      while(node) {
+        if ((node as HTMLElement).classList?.contains('rich-text')) {
+           (node as HTMLElement).focus();
+           break;
+        }
+        node = node.parentNode;
+      }
     }
   };
 
