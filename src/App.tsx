@@ -891,9 +891,9 @@ function App() {
                  )}
 
                  <div style={{ height: `${s.theme.titleAuthorGap}px` }} />
-                 <div className="flex justify-between items-center w-full px-12 font-bold" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.authorFillerSize || 18}px`, fontWeight: 'normal' }}>
-                 <RichText className="bg-transparent outline-none text-left w-1/3 block p-0 single-line-center" value={s.author} onChange={(val: string) => s.setAuthor(val)} placeholder="制表人：" />
-                 <RichText className="bg-transparent outline-none text-left w-1/2 block ml-32 p-0 single-line-center" value={s.filler} onChange={(val: string) => s.setFiller(val)} placeholder="填表人：" />              </div>
+                 <div className="flex justify-between items-center w-full px-12 font-bold gap-8" style={{ fontFamily: 'var(--oc-font)', fontSize: `${s.theme.authorFillerSize || 18}px`, fontWeight: 'normal' }}>
+                 <RichText className="bg-transparent outline-none text-left w-full block p-0 single-line-center" value={s.author} onChange={(val: string) => s.setAuthor(val)} placeholder="制表人：" />
+                 <RichText className="bg-transparent outline-none text-left w-full block p-0 single-line-center" value={s.filler} onChange={(val: string) => s.setFiller(val)} placeholder="填表人：" />              </div>
             </div>
             <div style={{ height: `${s.theme.authorGridGap}px` }} />
             <div className="relative z-10 flex flex-col items-center" style={{ gap: `${s.rowGap}px`, width: '100%' }}>
