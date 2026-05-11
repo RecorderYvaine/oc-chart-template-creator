@@ -589,9 +589,9 @@ function App() {
   };
 
   const maxItemsCount = Math.max(0, ...s.rows.map(r => r.items.length));
-  const naturalTableWidth = maxItemsCount * s.theme.boxBaseWidth + (maxItemsCount - 1) * s.gridGap;
+  const naturalTableWidth = maxItemsCount * (Number(s.theme.boxBaseWidth) || 0) + (maxItemsCount - 1) * (Number(s.gridGap) || 0);
   const aspectRatioParts = s.theme.boxAspectRatio === 'custom' ? [1, 1] : s.theme.boxAspectRatio.split('/').map(Number);
-  const fixedHeight = (s.theme.boxBaseWidth * aspectRatioParts[1]) / aspectRatioParts[0];
+  const fixedHeight = ((Number(s.theme.boxBaseWidth) || 0) * aspectRatioParts[1]) / aspectRatioParts[0];
 
   const maxExtraLines = Math.max(0, ...s.rows.flatMap(r => r.items.map(it => it.extraLines?.length || 0)));
   const extraLineIndices = Array.from({ length: maxExtraLines }, (_, i) => i);
@@ -723,8 +723,8 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max={100} value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: parseInt(e.target.value) || 20 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: parseInt(e.target.value) || 20 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max={100} value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                   </div>
@@ -734,8 +734,8 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max="100" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: parseInt(e.target.value) || 18 })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: parseInt(e.target.value) || 18 })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max="100" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                   </div>
@@ -900,11 +900,11 @@ function App() {
               <div className="flex flex-col" style={{ width: `${naturalTableWidth}px`, gap: `${s.rowGap}px` }}>
                 {s.rows.map((row) => (
                   <div key={row.id} className="flex relative group/row justify-center" style={{ gap: `${s.gridGap}px`, width: '100%' }}>
-                    <div className="no-export absolute top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20" style={{ right: `calc(100% + ${(s.theme.containerPadding ?? 64) + 24}px)` }}>
+                    <div className="no-export absolute top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20" style={{ right: `calc(100% + ${Number(s.theme.containerPadding || 64) + 24}px)` }}>
                       <button onClick={() => s.toggleRowFillWidth(row.id)} className={`p-2 rounded-xl shadow-lg transition-all hover:scale-110 ${row.fillWidth ? 'bg-orange-500 text-white border-orange-400' : 'bg-[#2a2a2a] text-gray-300 border border-[#444] hover:bg-[#333]'}`} title="铺满该行"><StretchHorizontal className="w-4 h-4" /></button>
                       <button onClick={() => s.removeRow(row.id)} className="p-2 bg-[#2a2a2a] border border-[#444] text-red-400 rounded-xl shadow-lg hover:bg-red-900/50 hover:scale-110 transition-all" title="删行"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="no-export absolute top-1/2 -translate-y-1/2 z-20" style={{ left: `calc(100% + ${(s.theme.containerPadding ?? 64) + 24}px)` }}>
+                    <div className="no-export absolute top-1/2 -translate-y-1/2 z-20" style={{ left: `calc(100% + ${Number(s.theme.containerPadding || 64) + 24}px)` }}>
                       <button onClick={() => s.addItemToRow(row.id)} className="bg-[#2a2a2a] hover:bg-[#333] border border-[#444] text-gray-300 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-xl transition-all hover:scale-105 whitespace-nowrap"><Plus className="w-4 h-4" /> 添加格子</button>
                     </div>
                     {row.items.map((item) => {
@@ -919,7 +919,7 @@ function App() {
                             <button onClick={() => s.updateItem(row.id, item.id, { textOffsetY: (item.textOffsetY || 0) + 4 })} className="text-gray-400 hover:text-white"><ArrowDown className="w-4 h-4" /></button>
                             {row.items.length > 1 && <button onClick={() => s.removeItemFromRow(row.id, item.id)} className="text-red-500 ml-1 hover:bg-red-500/10 rounded p-0.5"><Trash2 className="w-4 h-4" /></button>}
                           </div>
-                          <div className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: (s.theme.showBoxBorder && s.theme.borderWidth > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: (s.theme.isTransparentBg || !s.theme.showGridFill) ? 'transparent' : s.theme.boxBgColor }}>
+                          <div className={`grid-box-inner w-full relative transition-all duration-300 ${s.theme.isTransparentBg ? '' : 'shadow-lg'}`} style={{ height: `${fixedHeight}px`, border: (s.theme.showBoxBorder && Number(s.theme.borderWidth) > 0) ? `${s.theme.borderWidth}px solid ${s.theme.borderColor}` : 'none', backgroundColor: (s.theme.isTransparentBg || !s.theme.showGridFill) ? 'transparent' : s.theme.boxBgColor }}>
                             <RichText className="w-full h-full p-4 bg-transparent outline-none resize-none relative z-10" style={{ fontFamily: 'var(--oc-font)', color: s.theme.showGridFill ? (isLightColor(s.theme.boxBgColor) ? '#111827' : '#f3f4f6') : s.theme.textColor }} value={item.content} onChange={(val: string) => s.updateItem(row.id, item.id, { content: val })} />
                           </div>
                           <div className="text-center flex flex-col items-center transition-all duration-300" style={{ marginTop: `${item.textOffsetY || 0}px` }}>
@@ -927,8 +927,8 @@ function App() {
                               <div className="relative w-full group/label" style={{ marginTop: `${item.titleSpacing || s.theme.baseTitleSpacing}px` }}>
                                 <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                                    <input type="color" value={item.titleColor || s.theme.textColor} onChange={(e) => s.updateItem(row.id, item.id, { titleColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
-                                   <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
-                                   <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (item.titleSize || s.theme.baseTitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
+                                   <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (Number(item.titleSize || s.theme.baseTitleSize) || 0) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
+                                   <button onClick={() => s.updateItem(row.id, item.id, { titleSize: (Number(item.titleSize || s.theme.baseTitleSize) || 0) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
                                 <RichText className="title-grid w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.titleColor || s.theme.textColor, fontSize: `${cTS}px`, fontWeight: s.theme.titleBold !== false ? 'var(--oc-font-weight)' : 'normal', WebkitTextStroke: s.theme.titleBold !== false && (s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) ? '0.8px currentColor' : '0', lineHeight: 1.1 }} value={item.title} onChange={(val: string) => s.updateItem(row.id, item.id, { title: val })} placeholder="格子标题" />
                               </div>
@@ -937,8 +937,8 @@ function App() {
                               <div className="relative w-full group/label" style={{ marginTop: `${item.subtitleSpacing || s.theme.baseSubtitleSpacing}px` }}>
                                 <div className="no-export absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                                    <input type="color" value={item.subtitleColor || s.theme.textColor} onChange={(e) => s.updateItem(row.id, item.id, { subtitleColor: e.target.value })} className="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
-                                   <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
-                                   <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (item.subtitleSize || s.theme.baseSubtitleSize) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
+                                   <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (Number(item.subtitleSize || s.theme.baseSubtitleSize) || 0) + 2 })} className="text-blue-500 font-bold px-1 text-xs">+</button>
+                                   <button onClick={() => s.updateItem(row.id, item.id, { subtitleSize: (Number(item.subtitleSize || s.theme.baseSubtitleSize) || 0) - 2 })} className="text-blue-500 font-bold px-1 text-xs">-</button>
                                 </div>
                                 <RichText className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: item.subtitleColor || s.theme.textColor, fontSize: `${cSS}px`, fontWeight: 'normal', lineHeight: 1.2 }} value={item.subtitle} onChange={(val: string) => s.updateItem(row.id, item.id, { subtitle: val })} placeholder="格子小字" />
                               </div>
@@ -949,8 +949,8 @@ function App() {
                                 <div key={line.id} className="relative w-full group/label flex justify-center" style={{ marginTop: `${line.spacing || s.theme.baseExtraLineSpacing}px` }}>
                                   <div className="no-export absolute -left-16 top-1/2 -translate-y-1/2 opacity-0 group-hover/label:opacity-100 flex items-center gap-1 transition-opacity bg-[#222] p-1 rounded-lg z-30 shadow-lg border border-[#444]">
                                      <input type="color" value={line.color || s.theme.textColor} onChange={(e) => s.updateExtraLine(row.id, item.id, line.id, { color: e.target.value })} className="w-3 h-3 p-0 border-0 bg-transparent cursor-pointer" />
-                                     <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) + 2 })} className="text-[10px] text-blue-500 font-bold">+</button>
-                                     <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (line.fontSize || s.theme.baseExtraLineSize) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
+                                     <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (Number(line.fontSize || s.theme.baseExtraLineSize) || 0) + 2 })} className="text-[10px] text-blue-500 font-bold">+</button>
+                                     <button onClick={() => s.updateExtraLine(row.id, item.id, line.id, { fontSize: (Number(line.fontSize || s.theme.baseExtraLineSize) || 0) - 2 })} className="text-[10px] text-blue-500 font-bold">-</button>
                                      <button onClick={() => s.removeExtraLine(row.id, item.id, line.id)} className="text-red-500 ml-1 hover:scale-110 transition-transform"><Trash2 className="w-3 h-3" /></button>
                                   </div>
                                   <RichText className="w-full text-center bg-transparent outline-none resize-none overflow-hidden block p-0" style={{ fontFamily: 'var(--oc-font)', color: line.color || s.theme.textColor, fontSize: `${line.fontSize || s.theme.baseExtraLineSize}px`, fontWeight: 'normal' }} value={line.text} onChange={(val: string) => s.updateExtraLine(row.id, item.id, line.id, { text: val })} placeholder={`描述行 ${lineIndex + 1}`} />
