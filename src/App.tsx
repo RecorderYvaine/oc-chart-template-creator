@@ -621,13 +621,13 @@ function App() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-auto p-12 bg-neutral-800 relative font-sans" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
-        <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
+        <div className="fixed bottom-8 right-8 z-50 flex flex-col items-center gap-2 bg-[#222] p-2 rounded-2xl shadow-2xl border border-[#444]">
           <button onClick={() => setZoom(z => Math.min(z + 0.1, 3))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="放大"><ZoomIn className="w-5 h-5" /></button>
-          <div className="text-center text-xs font-bold text-gray-400 py-1">{Math.round(zoom * 100)}%</div>
+          <div className="flex items-center justify-center text-[10px] font-bold text-gray-400 py-0.5 w-full">{Math.round(zoom * 100)}%</div>
           <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.2))} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title="缩小"><ZoomOut className="w-5 h-5" /></button>
           <button onClick={() => setZoom(1)} className="p-2 text-gray-400 hover:text-white hover:bg-[#333] rounded-xl transition-all" title=" 重置大小"><RotateCcw className="w-5 h-5" /></button>
         </div>
-        <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top relative group/main pb-24" style={{ zoom }}>
+        <div className="flex flex-col items-center min-w-max mx-auto transition-all duration-200 origin-top relative group/main pb-24 px-[400px]" style={{ zoom }}>
           <div ref={canvasRef} className="inline-flex flex-col items-center relative shadow-2xl transition-all duration-500" style={{ backgroundColor: s.theme.isTransparentBg ? 'transparent' : s.theme.bgColor, isolation: 'isolate', color: s.theme.textColor, padding: `${s.theme.containerPadding ?? 64}px` }}>
             <PunchHoleBackground s={s} canvasRef={canvasRef} />
             <div className="relative z-10 flex flex-col items-center text-center w-full">
