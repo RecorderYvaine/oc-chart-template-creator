@@ -27,6 +27,7 @@ const FormatToolbar = () => {
   const [currentSize, setCurrentSize] = useState(30);
   const [currentColor, setCurrentColor] = useState('#ffffff');
   const savedRange = useRef<Range | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleSelection = () => {
@@ -84,7 +85,7 @@ const FormatToolbar = () => {
     triggerInput();
   };
 
-  const applySize = (newSize: number) => {
+  const applySize = (newSize: number, keepFocus: boolean = false) => {
     if (isNaN(newSize) || newSize <= 0) return;
     restoreSelection();
     setCurrentSize(newSize);
@@ -102,6 +103,21 @@ const FormatToolbar = () => {
     // Turn it back on for future color commands
     document.execCommand('styleWithCSS', false, 'true');
     triggerInput();
+
+    if (keepFocus && inputRef.current) {
+      inputRef.current.focus();
+    } else {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        savedRange.current = sel.getRangeAt(0).cloneRange();
+      }
+    }
+  };
+
+  const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value) || 0;
+    setCurrentSize(val);
+    applySize(val, true);
   };
 
   const triggerInput = () => {
@@ -123,10 +139,10 @@ const FormatToolbar = () => {
        <div className="flex items-center gap-1 bg-[#111] rounded px-1">
          <button onMouseDown={(e) => { e.preventDefault(); applySize(Math.max(10, currentSize - 2)); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">-</button>
          <input 
+           ref={inputRef}
            type="number" 
            value={currentSize} 
-           onChange={(e) => setCurrentSize(parseInt(e.target.value) || 0)}
-           onBlur={() => applySize(currentSize)}
+           onChange={handleSizeChange}
            onKeyDown={(e) => { if(e.key === 'Enter') applySize(currentSize); }}
            className="bg-transparent text-white text-xs w-10 text-center outline-none appearance-none m-0" 
          />
