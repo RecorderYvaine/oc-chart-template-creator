@@ -26,10 +26,17 @@ const FormatToolbar = () => {
   const [pos, setPos] = useState({ top: 0, left: 0, show: false });
   const [currentSize, setCurrentSize] = useState(30);
   const [currentColor, setCurrentColor] = useState('#ffffff');
+  const savedRange = useRef<Range | null>(null);
 
   useEffect(() => {
     const handleSelection = () => {
       const sel = window.getSelection();
+      
+      // If focus moved inside our toolbar, do not hide it
+      if (document.activeElement?.closest('.format-toolbar')) {
+        return;
+      }
+
       if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
         let node: Node | null = sel.anchorNode;
         let isRich = false;
@@ -41,6 +48,7 @@ const FormatToolbar = () => {
           node = node.parentNode;
         }
         if (isRich) {
+          savedRange.current = sel.getRangeAt(0).cloneRange();
           const rect = sel.getRangeAt(0).getBoundingClientRect();
           const parent = sel.anchorNode?.parentElement;
           if (parent) {
@@ -60,7 +68,16 @@ const FormatToolbar = () => {
 
   if (!pos.show) return null;
 
+  const restoreSelection = () => {
+    const sel = window.getSelection();
+    if (sel && savedRange.current) {
+      sel.removeAllRanges();
+      sel.addRange(savedRange.current);
+    }
+  };
+
   const applyColor = (color: string) => {
+    restoreSelection();
     setCurrentColor(color);
     document.execCommand('styleWithCSS', false, 'true');
     document.execCommand('foreColor', false, color);
@@ -68,14 +85,22 @@ const FormatToolbar = () => {
   };
 
   const applySize = (newSize: number) => {
+    if (isNaN(newSize) || newSize <= 0) return;
+    restoreSelection();
     setCurrentSize(newSize);
-    document.execCommand('styleWithCSS', false, 'true');
+    
+    // Turn OFF styleWithCSS to force the browser to generate <font size="7">
+    document.execCommand('styleWithCSS', false, 'false');
     document.execCommand('fontSize', false, '7'); 
+    
     const fonts = document.querySelectorAll('font[size="7"]');
     fonts.forEach(f => {
       f.removeAttribute('size');
       (f as HTMLElement).style.fontSize = `${newSize}px`;
     });
+    
+    // Turn it back on for future color commands
+    document.execCommand('styleWithCSS', false, 'true');
     triggerInput();
   };
 
@@ -93,11 +118,18 @@ const FormatToolbar = () => {
   };
 
   return (
-    <div className="fixed z-[200] bg-[#222] border border-[#444] shadow-2xl rounded-xl p-2 flex items-center gap-2 transform -translate-x-1/2" style={{ top: pos.top, left: pos.left }}>
+    <div className="format-toolbar fixed z-[200] bg-[#222] border border-[#444] shadow-2xl rounded-xl p-2 flex items-center gap-2 transform -translate-x-1/2" style={{ top: pos.top, left: pos.left }}>
        <input type="color" value={currentColor} onChange={e => applyColor(e.target.value)} className="w-6 h-6 border-0 p-0 bg-transparent cursor-pointer" />
        <div className="flex items-center gap-1 bg-[#111] rounded px-1">
          <button onMouseDown={(e) => { e.preventDefault(); applySize(Math.max(10, currentSize - 2)); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">-</button>
-         <span className="text-white text-xs w-6 text-center">{currentSize}</span>
+         <input 
+           type="number" 
+           value={currentSize} 
+           onChange={(e) => setCurrentSize(parseInt(e.target.value) || 0)}
+           onBlur={() => applySize(currentSize)}
+           onKeyDown={(e) => { if(e.key === 'Enter') applySize(currentSize); }}
+           className="bg-transparent text-white text-xs w-10 text-center outline-none appearance-none m-0" 
+         />
          <button onMouseDown={(e) => { e.preventDefault(); applySize(currentSize + 2); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">+</button>
        </div>
     </div>
