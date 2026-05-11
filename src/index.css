@@ -25,6 +25,48 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('/noto-serif.ttf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('/noto-serif-bold.ttf') format('truetype');
+  font-weight: bold;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/noto-sans.ttf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/noto-sans-bold.ttf') format('truetype');
+  font-weight: bold;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Serif SC Bold Canvas';
+  src: url('/noto-serif-bold.ttf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC Bold Canvas';
+  src: url('/noto-sans-bold.ttf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+
 body {
   background-color: #1a1a1a;
   color: #eeeeee;

@@ -332,12 +332,27 @@ const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: nu
         const padT = parseFloat(computedStyle.paddingTop) || 0;
         const innerWidth = rect.width - padL - padR;
 
+        const getCanvasFontMeasure = (isBold: boolean, fontSize: number, fontFamily: string) => {
+            let weight = isBold ? 'bold' : 'normal';
+            let family = fontFamily;
+            if (isBold) {
+                if (family.includes('Noto Serif SC')) {
+                    family = '"Noto Serif SC Bold Canvas", serif';
+                    weight = 'normal';
+                } else if (family.includes('Noto Sans SC')) {
+                    family = '"Noto Sans SC Bold Canvas", sans-serif';
+                    weight = 'normal';
+                }
+            }
+            return `${weight} ${fontSize}px ${family}`;
+        };
+
         const wrappedLines: any[][] = [];
         for(const line of linesOfSegments) {
             let currentWrappedLine: any[] = [];
             let currentWidth = 0;
             for(const seg of line) {
-                ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
+                ctx.font = getCanvasFontMeasure(seg.isBold, seg.fontSize, seg.fontFamily);
                 const w = ctx.measureText(seg.char).width;
                 if (currentWidth + w > innerWidth && currentWrappedLine.length > 0) {
                     wrappedLines.push(currentWrappedLine);
@@ -532,6 +547,12 @@ function App() {
     document.fonts.load('1em "QijiP1"').catch(() => {});
     document.fonts.load('1em "QijiP2"').catch(() => {});
     document.fonts.load('1em "HuiwenMincho"').catch(() => {});
+    document.fonts.load('1em "Noto Serif SC"').catch(() => {});
+    document.fonts.load('bold 1em "Noto Serif SC"').catch(() => {});
+    document.fonts.load('1em "Noto Sans SC"').catch(() => {});
+    document.fonts.load('bold 1em "Noto Sans SC"').catch(() => {});
+    document.fonts.load('1em "Noto Serif SC Bold Canvas"').catch(() => {});
+    document.fonts.load('1em "Noto Sans SC Bold Canvas"').catch(() => {});
   }, []);
 
   useEffect(() => {
