@@ -173,27 +173,37 @@ const FormatToolbar = () => {
 
 const RichText = ({ value, onChange, placeholder, className, style }: any) => {
   const ref = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (ref.current && ref.current.innerHTML !== value) {
       ref.current.innerHTML = value;
     }
   }, [value]);
 
+  const isEmpty = !value || value === '<br>' || value === '<div><br></div>';
+
   return (
     <div
       ref={ref}
       contentEditable
       suppressContentEditableWarning
-      className={`rich-text ${className} cursor-text empty:before:content-[attr(placeholder)] empty:before:text-gray-400`}
+      data-empty={isEmpty}
+      className={`rich-text ${className} cursor-text`}
       style={{ ...style, minHeight: '1em' }}
       {...({ placeholder } as any)}
-      onInput={(e: React.FormEvent<HTMLDivElement>) => onChange(e.currentTarget.innerHTML)}
-      onBlur={(e: React.FocusEvent<HTMLDivElement>) => onChange(e.currentTarget.innerHTML)}
+      onInput={(e: React.FormEvent<HTMLDivElement>) => {
+        let html = e.currentTarget.innerHTML;
+        if (html === '<br>') { html = ''; e.currentTarget.innerHTML = ''; }
+        onChange(html);
+      }}
+      onBlur={(e: React.FocusEvent<HTMLDivElement>) => {
+        let html = e.currentTarget.innerHTML;
+        if (html === '<br>') { html = ''; e.currentTarget.innerHTML = ''; }
+        onChange(html);
+      }}
     />
   );
 };
-
 const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: number = 3): Promise<string> => {
     await document.fonts.ready;
     const rootRect = canvasEl.getBoundingClientRect();
@@ -798,8 +808,8 @@ function App() {
                       <div className="space-y-1">
                         <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                         <div className="flex items-center gap-3">
-                          <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize || s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                          <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseInt(e.target.value) || 10)} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                           <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                         </div>
                       </div>

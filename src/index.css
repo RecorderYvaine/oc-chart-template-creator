@@ -38,3 +38,13 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+.rich-text:empty::before,
+.rich-text[data-empty="true"]::before {
+  content: attr(placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+.rich-text[data-empty="true"] br {
+  display: none;
+}
