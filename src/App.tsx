@@ -40,6 +40,31 @@ const layoutControls: LayoutControl[] = [
   { label: '画布边缘间距', key: 'containerPadding', min: 0, max: 200, def: 64 },
 ];
 
+const allFontLoadRequests = [
+  '1em "QijiP1"',
+  '1em "QijiP2"',
+  '1em "HuiwenMincho"',
+  '1em "Noto Serif SC"',
+  'bold 1em "Noto Serif SC"',
+  '1em "Noto Sans SC"',
+  'bold 1em "Noto Sans SC"',
+  '1em "Noto Serif SC Bold Canvas"',
+  '1em "Noto Sans SC Bold Canvas"',
+];
+
+const getSelectedFontLoadRequests = (fontFamily: string) => {
+  if (fontFamily.includes('Qiji')) {
+    return ['1em "QijiP1"', '1em "QijiP2"', '1em "HuiwenMincho"'];
+  }
+  if (fontFamily.includes('Huiwen')) {
+    return ['1em "HuiwenMincho"'];
+  }
+  if (fontFamily.includes('Noto Sans SC')) {
+    return ['1em "Noto Sans SC"', 'bold 1em "Noto Sans SC"', '1em "Noto Sans SC Bold Canvas"'];
+  }
+  return ['1em "Noto Serif SC"', 'bold 1em "Noto Serif SC"', '1em "Noto Serif SC Bold Canvas"'];
+};
+
 function App() {
   const s = useStore();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -110,36 +135,20 @@ function App() {
   }, [zoom]);
 
   useEffect(() => {
-    document.fonts.load('1em "QijiP1"').catch(() => {});
-    document.fonts.load('1em "QijiP2"').catch(() => {});
-    document.fonts.load('1em "HuiwenMincho"').catch(() => {});
-    document.fonts.load('1em "Noto Serif SC"').catch(() => {});
-    document.fonts.load('bold 1em "Noto Serif SC"').catch(() => {});
-    document.fonts.load('1em "Noto Sans SC"').catch(() => {});
-    document.fonts.load('bold 1em "Noto Sans SC"').catch(() => {});
-    document.fonts.load('1em "Noto Serif SC Bold Canvas"').catch(() => {});
-    document.fonts.load('1em "Noto Sans SC Bold Canvas"').catch(() => {});
+    allFontLoadRequests.forEach((request) => {
+      document.fonts.load(request).catch(() => {});
+    });
   }, []);
 
   useEffect(() => {
     let active = true;
     const loadSelectedFont = async () => {
-      if (fontFamily.includes('Qiji')) {
-        setIsFontLoading(true);
-        await Promise.all([
-          document.fonts.load('1em "QijiP1"'),
-          document.fonts.load('1em "QijiP2"'),
-          document.fonts.load('1em "HuiwenMincho"'),
-        ]);
-      } else if (fontFamily.includes('Huiwen')) {
-        setIsFontLoading(true);
-        await document.fonts.load('1em "HuiwenMincho"');
-      } else {
-        setIsFontLoading(false);
-        return;
+      setIsFontLoading(true);
+      try {
+        await Promise.all(getSelectedFontLoadRequests(fontFamily).map((request) => document.fonts.load(request)));
+      } finally {
+        if (active) setIsFontLoading(false);
       }
-
-      if (active) setIsFontLoading(false);
     };
 
     void loadSelectedFont();
@@ -309,10 +318,10 @@ function App() {
                       </select>
                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none group-hover/select:text-white transition-colors" />
                     </div>
-                    {(s.theme.fontFamily.includes('Qiji') || s.theme.fontFamily.includes('Huiwen')) && isFontLoading && (
+                    {isFontLoading && (
                       <div className="text-[11px] text-gray-400 flex items-start gap-1.5 px-1 animate-pulse mt-1">
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5 text-blue-400" />
-                        <span>该字体加载较慢，请耐心等待一段时间。</span>
+                        <span>字体加载中，请耐心等待一段时间。</span>
                       </div>
                     )}
                   </div>
