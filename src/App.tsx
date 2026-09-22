@@ -1,497 +1,44 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { useStore } from './store';
+import { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { useStore, type AppDocument } from './store';
 import { 
   Plus, Trash2, Eye, EyeOff, Palette, Columns, Layers, Loader2, 
   ArrowUp, ArrowDown, StretchHorizontal, ChevronDown, Download, 
-  X, Search, ZoomIn, ZoomOut, RotateCcw, AlignLeft 
+  X, Search, ZoomIn, ZoomOut, RotateCcw, AlignLeft, Undo2, Redo2
 } from 'lucide-react';
+import { FormatToolbar } from './components/FormatToolbar';
+import { PunchHoleBackground } from './components/PunchHoleBackground';
+import { RichText } from './components/RichText';
+import { generateNativeScreenshot } from './export/generateNativeScreenshot';
+import { isLightColor } from './utils/color';
 
-const isLightColor = (color: string) => {
-  const hex = color.replace('#', '');
-  const r = parseInt(hex.substring(0, 2), 16) || 0;
-  const g = parseInt(hex.substring(2, 4), 16) || 0;
-  const b = parseInt(hex.substring(4, 6), 16) || 0;
-  const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  return brightness > 155;
+const isTextEditingTarget = (target: EventTarget | null) => {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  const tagName = el.tagName;
+  return el.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || Boolean(el.closest('.rich-text'));
 };
 
-const rgbToHex = (rgb: string) => {
-  const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-  if (!match) return rgb;
-  const hex = (x: string) => ("0" + parseInt(x).toString(16)).slice(-2);
-  return "#" + hex(match[1]) + hex(match[2]) + hex(match[3]);
-};
+const parseNumberInput = (value: string) => (value === '' ? '' : parseInt(value));
 
-const FormatToolbar = () => {
-  const [pos, setPos] = useState({ top: 0, left: 0, show: false });
-  const [currentSize, setCurrentSize] = useState(30);
-  const [currentColor, setCurrentColor] = useState('#ffffff');
-  const savedRange = useRef<Range | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const handleSelection = () => {
-      const sel = window.getSelection();
-      
-      // If focus moved inside our toolbar, do not hide it
-      if (document.activeElement?.closest('.format-toolbar')) {
-        return;
-      }
-
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-        let node: Node | null = sel.anchorNode;
-        let isRich = false;
-        while(node) {
-          if ((node as HTMLElement).classList?.contains('rich-text')) {
-             isRich = true;
-             break;
-          }
-          node = node.parentNode;
-        }
-        if (isRich) {
-          savedRange.current = sel.getRangeAt(0).cloneRange();
-          const rect = sel.getRangeAt(0).getBoundingClientRect();
-          const parent = sel.anchorNode?.parentElement;
-          if (parent) {
-             const style = window.getComputedStyle(parent);
-             setCurrentColor(rgbToHex(style.color));
-             setCurrentSize(parseFloat(style.fontSize) || 30);
-          }
-          setPos({ top: rect.top - 50, left: rect.left + rect.width / 2, show: true });
-          return;
-        }
-      }
-      setPos(p => ({...p, show: false}));
-    };
-    document.addEventListener('selectionchange', handleSelection);
-    return () => document.removeEventListener('selectionchange', handleSelection);
-  }, []);
-
-  if (!pos.show) return null;
-
-  const restoreSelection = () => {
-    const sel = window.getSelection();
-    if (sel && savedRange.current) {
-      // Force focus back to the rich-text container FIRST so execCommand knows where to apply
-      let node: Node | null = savedRange.current.startContainer;
-      while(node) {
-        if ((node as HTMLElement).classList?.contains('rich-text')) {
-           (node as HTMLElement).focus();
-           break;
-        }
-        node = node.parentNode;
-      }
-
-      // THEN restore the exact range
-      sel.removeAllRanges();
-      sel.addRange(savedRange.current);
-    }
-  };
-
-  const updateSavedRange = () => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      savedRange.current = sel.getRangeAt(0).cloneRange();
-    }
-  };
-
-  const applyColor = (color: string) => {
-    restoreSelection();
-    setCurrentColor(color);
-    document.execCommand('styleWithCSS', false, 'true');
-    document.execCommand('foreColor', false, color);
-    triggerInput();
-    updateSavedRange();
-  };
-
-  const applySize = (newSize: number, keepFocus: boolean = false) => {
-    if (isNaN(newSize) || newSize <= 0) return;
-    restoreSelection();
-    setCurrentSize(newSize);
-    
-    document.execCommand('styleWithCSS', false, 'true');
-    
-    // We use a completely unique font name as a marker to find the EXACT nodes execCommand wraps.
-    // This bypasses all the browser quirks where fontSize=7 fails or snaps to 48px.
-    const marker = 'MARKER_SIZE_HACK';
-    document.execCommand('fontName', false, marker); 
-    
-    const els = document.querySelectorAll(`font[face="${marker}"], [style*="${marker}"]`);
-    els.forEach(el => {
-      const e = el as HTMLElement;
-      if (e.tagName === 'FONT') e.removeAttribute('face');
-      e.style.fontFamily = ''; // Remove the marker
-      e.style.fontSize = `${newSize}px`; // Apply precise pixel size
-      if (e.getAttribute('style') === '') e.removeAttribute('style');
-    });
-    
-    triggerInput();
-    updateSavedRange();
-
-    if (keepFocus && inputRef.current) {
-      inputRef.current.focus();
-    }
-  };
-
-  const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value === '' ? ('' as any) : parseInt(e.target.value);
-    setCurrentSize(val);
-    applySize(val, true);
-  };
-
-  const triggerInput = () => {
-    const sel = window.getSelection();
-    if (sel && sel.anchorNode) {
-       let node: Node | null = sel.anchorNode;
-       while(node && !(node as HTMLElement).classList?.contains('rich-text')) {
-         node = node.parentNode;
-       }
-       if (node) {
-         node.dispatchEvent(new Event('input', { bubbles: true }));
-       }
-    }
-  };
-
-  return (
-    <div className="format-toolbar fixed z-[200] bg-[#222] border border-[#444] shadow-2xl rounded-xl p-2 flex items-center gap-2 transform -translate-x-1/2" style={{ top: pos.top, left: pos.left }}>
-       <input type="color" value={currentColor} onChange={e => applyColor(e.target.value)} className="w-6 h-6 border-0 p-0 bg-transparent cursor-pointer" />
-       <div className="flex items-center gap-1 bg-[#111] rounded px-1">
-         <button onMouseDown={(e) => { e.preventDefault(); applySize(Math.max(10, currentSize - 2)); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">-</button>
-         <input 
-           ref={inputRef}
-           type="number" 
-           value={currentSize} 
-           onChange={handleSizeChange}
-           onKeyDown={(e) => { if(e.key === 'Enter') applySize(currentSize); }}
-           className="bg-transparent text-white text-xs w-10 text-center outline-none appearance-none m-0" 
-         />
-         <button onMouseDown={(e) => { e.preventDefault(); applySize(currentSize + 2); }} className="text-gray-400 hover:text-white px-2 py-1 font-bold">+</button>
-       </div>
-    </div>
-  );
-};
-
-const RichText = ({ value, onChange, placeholder, className, style }: any) => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value) {
-      ref.current.innerHTML = value;
-    }
-  }, [value]);
-
-  const isEmpty = !value || value === '<br>' || value === '<div><br></div>';
-
-  return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      data-empty={isEmpty}
-      className={`rich-text ${className} cursor-text`}
-      style={{ ...style, minHeight: '1em' }}
-      {...({ placeholder } as any)}
-      onInput={(e: React.FormEvent<HTMLDivElement>) => {
-        let html = e.currentTarget.innerHTML;
-        if (html === '<br>') { html = ''; e.currentTarget.innerHTML = ''; }
-        onChange(html);
-      }}
-      onBlur={(e: React.FocusEvent<HTMLDivElement>) => {
-        let html = e.currentTarget.innerHTML;
-        if (html === '<br>') { html = ''; e.currentTarget.innerHTML = ''; }
-        onChange(html);
-      }}
-      onPaste={(e: React.ClipboardEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        const text = e.clipboardData.getData('text/plain');
-        document.execCommand('insertText', false, text);
-      }}
-    />
-  );
-};
-const generateNativeScreenshot = async (canvasEl: HTMLElement, s: any, scale: number = 3): Promise<string> => {
-    await document.fonts.ready;
-    const rootRect = canvasEl.getBoundingClientRect();
-    const canvas = document.createElement('canvas');
-    canvas.width = rootRect.width * scale;
-    canvas.height = rootRect.height * scale;
-    const ctx = canvas.getContext('2d')!;
-    ctx.scale(scale, scale);
-
-    // 1. Draw Root Background
-    ctx.fillStyle = s.theme.bgColor;
-    ctx.fillRect(0, 0, rootRect.width, rootRect.height);
-
-    // 2. Draw Grid Boxes
-    const boxes = canvasEl.querySelectorAll('.grid-box-inner');
-    boxes.forEach(box => {
-        const rect = box.getBoundingClientRect();
-        const x = rect.left - rootRect.left;
-        const y = rect.top - rootRect.top;
-
-        if (s.theme.isTransparentBg) {
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.fillStyle = 'black';
-            ctx.fillRect(x, y, rect.width, rect.height);
-            ctx.globalCompositeOperation = 'source-over';
-        } else if (s.theme.showGridFill) {
-            ctx.fillStyle = s.theme.boxBgColor;
-            ctx.fillRect(x, y, rect.width, rect.height);
-        }
-
-        if (s.theme.showBoxBorder && s.theme.borderWidth > 0) {
-            ctx.strokeStyle = s.theme.borderColor;
-            ctx.lineWidth = s.theme.borderWidth;
-            const hlw = ctx.lineWidth / 2;
-            ctx.strokeRect(x + hlw, y + hlw, rect.width - ctx.lineWidth, rect.height - ctx.lineWidth);
-        }
-    });
-
-    // 3. Draw Texts
-    const textEls = canvasEl.querySelectorAll('.rich-text');
-    textEls.forEach(el => {
-        const htmlEl = el as HTMLElement;
-        const computedStyle = window.getComputedStyle(htmlEl);
-        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') return;
-
-        let html = htmlEl.innerHTML;
-        let isPlaceholder = false;
-        if (!html || html === '<br>') {
-           html = htmlEl.getAttribute('placeholder') || '';
-           isPlaceholder = true;
-        }
-        if (!html) return;
-
-        const rect = htmlEl.getBoundingClientRect();
-        const x = rect.left - rootRect.left;
-        const y = rect.top - rootRect.top;
-        
-        const defaultSize = parseFloat(computedStyle.fontSize);
-        const defaultColor = isPlaceholder ? '#9ca3af' : computedStyle.color; 
-        const defaultBold = computedStyle.fontWeight === 'bold' || parseInt(computedStyle.fontWeight) >= 700;
-        const defaultFamily = computedStyle.fontFamily;
-        const textAlign = computedStyle.textAlign;
-
-        let strokeWidth = 0;
-        let strokeColor = defaultColor;
-        const rawStrokeWidth = computedStyle.webkitTextStrokeWidth || computedStyle.getPropertyValue('-webkit-text-stroke-width');
-        if (rawStrokeWidth && rawStrokeWidth !== '0px' && rawStrokeWidth !== '0') {
-            strokeWidth = parseFloat(rawStrokeWidth);
-        }
-
-        const tempNode = document.createElement('div');
-        tempNode.innerHTML = html;
-        const segments: any[] = [];
-        
-        function traverse(node: Node, color: string, size: number, isBold: boolean) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.textContent || "";
-                for (const char of text) {
-                    segments.push({ char, color, fontSize: size, isBold, fontFamily: defaultFamily });
-                }
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                const nodeEl = node as HTMLElement;
-                let newColor = color;
-                let newSize = size;
-                let newBold = isBold;
-
-                if (nodeEl.style.color) newColor = nodeEl.style.color;
-                if (nodeEl.style.fontSize) {
-                    const parsed = parseFloat(nodeEl.style.fontSize);
-                    if (!isNaN(parsed)) newSize = parsed;
-                }
-                if (nodeEl.style.fontWeight === 'bold' || nodeEl.tagName === 'B' || nodeEl.tagName === 'STRONG') {
-                    newBold = true;
-                }
-
-                if (nodeEl.tagName === 'BR' || nodeEl.tagName === 'DIV') {
-                    if (segments.length > 0 && segments[segments.length - 1].char !== '\n') {
-                        segments.push({ char: '\n', color: newColor, fontSize: newSize, isBold: newBold, fontFamily: defaultFamily });
-                    }
-                }
-
-                nodeEl.childNodes.forEach(child => traverse(child, newColor, newSize, newBold));
-            }
-        }
-        traverse(tempNode, defaultColor, defaultSize, defaultBold);
-
-        const linesOfSegments: any[][] = [];
-        let currentLineSegments: any[] = [];
-        for(const seg of segments) {
-            if (seg.char === '\n') {
-                linesOfSegments.push(currentLineSegments);
-                currentLineSegments = [];
-            } else {
-                currentLineSegments.push(seg);
-            }
-        }
-        if (currentLineSegments.length > 0) linesOfSegments.push(currentLineSegments);
-
-        const padL = parseFloat(computedStyle.paddingLeft) || 0;
-        const padR = parseFloat(computedStyle.paddingRight) || 0;
-        const padT = parseFloat(computedStyle.paddingTop) || 0;
-        const innerWidth = rect.width - padL - padR;
-
-        const getCanvasFontMeasure = (isBold: boolean, fontSize: number, fontFamily: string) => {
-            let weight = isBold ? 'bold' : 'normal';
-            let family = fontFamily;
-            if (isBold) {
-                if (family.includes('Noto Serif SC')) {
-                    family = '"Noto Serif SC Bold Canvas", serif';
-                    weight = 'normal';
-                } else if (family.includes('Noto Sans SC')) {
-                    family = '"Noto Sans SC Bold Canvas", sans-serif';
-                    weight = 'normal';
-                }
-            }
-            return `${weight} ${fontSize}px ${family}`;
-        };
-
-        const wrappedLines: any[][] = [];
-        for(const line of linesOfSegments) {
-            let currentWrappedLine: any[] = [];
-            let currentWidth = 0;
-            for(const seg of line) {
-                ctx.font = getCanvasFontMeasure(seg.isBold, seg.fontSize, seg.fontFamily);
-                const w = ctx.measureText(seg.char).width;
-                if (currentWidth + w > innerWidth && currentWrappedLine.length > 0) {
-                    wrappedLines.push(currentWrappedLine);
-                    currentWrappedLine = [seg];
-                    currentWidth = w;
-                } else {
-                    currentWrappedLine.push(seg);
-                    currentWidth += w;
-                }
-            }
-            if (currentWrappedLine.length > 0) wrappedLines.push(currentWrappedLine);
-        }
-
-        let startY = y + padT;
-        if (htmlEl.classList.contains('single-line-center')) {
-           startY = y + (rect.height - defaultSize) / 2;
-        } else {
-           startY += defaultSize * 0.1;
-        }
-
-        let currentY = startY;
-        for(const wLine of wrappedLines) {
-            let maxFontSize = defaultSize;
-            let lineWidth = 0;
-            for(const seg of wLine) {
-                if (seg.fontSize > maxFontSize) maxFontSize = seg.fontSize;
-                ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
-                lineWidth += ctx.measureText(seg.char).width;
-            }
-            
-            let lineHeight = maxFontSize * 1.2;
-            let currentX = x + padL;
-            if (textAlign === 'center') {
-                currentX += (innerWidth - lineWidth) / 2;
-            } else if (textAlign === 'right') {
-                currentX += (innerWidth - lineWidth);
-            }
-
-            for(const seg of wLine) {
-                ctx.font = `${seg.isBold ? 'bold' : 'normal'} ${seg.fontSize}px ${seg.fontFamily}`;
-                ctx.fillStyle = seg.color;
-                ctx.textBaseline = 'bottom';
-                const charY = currentY + maxFontSize; 
-                
-                if (strokeWidth > 0 && !isNaN(strokeWidth) && !isPlaceholder) {
-                    ctx.strokeStyle = strokeColor;
-                    ctx.lineWidth = strokeWidth;
-                    ctx.lineJoin = 'round';
-                    ctx.strokeText(seg.char, currentX, charY);
-                }
-                ctx.fillText(seg.char, currentX, charY);
-                currentX += ctx.measureText(seg.char).width;
-            }
-            currentY += lineHeight;
-        }
-    });
-
-    // 4. Draw Watermark
-    const watermarks = canvasEl.querySelectorAll('.watermark-text');
-    watermarks.forEach(el => {
-        const htmlEl = el as HTMLElement;
-        const text = htmlEl.innerText || htmlEl.textContent || "";
-        if (!text) return;
-        
-        const style = window.getComputedStyle(htmlEl);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
-
-        const rect = htmlEl.getBoundingClientRect();
-        const x = rect.left - rootRect.left;
-        const y = rect.top - rootRect.top;
-        
-        const fontSize = parseFloat(style.fontSize);
-        ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
-        
-        ctx.globalAlpha = parseFloat(style.opacity) || 1;
-        ctx.fillStyle = style.color;
-        ctx.textBaseline = 'top';
-        ctx.fillText(text, x, y);
-        ctx.globalAlpha = 1;
-    });
-
-    return canvas.toDataURL('image/png');
-};
-
-const PunchHoleBackground = ({ s, canvasRef }: { s: any, canvasRef: React.RefObject<HTMLDivElement | null> }) => {
-  const [path, setPath] = useState('');
-
-  useEffect(() => {
-    if (!s.theme.isTransparentBg || !canvasRef.current) return;
-    const parent = canvasRef.current;
-    let frame: number;
-    const update = () => {
-      const w = parent.offsetWidth;
-      const h = parent.offsetHeight;
-      const boxes = parent.querySelectorAll('.grid-box-inner');
-      let d = `M 0 0 h ${w} v ${h} h -${w} z`;
-      boxes.forEach(box => {
-        const target = box as HTMLElement;
-        let x = 0; let y = 0;
-        let current: HTMLElement | null = target;
-        while (current && current !== parent) {
-          x += current.offsetLeft; y += current.offsetTop;
-          current = current.offsetParent as HTMLElement;
-        }
-        const bw = target.offsetWidth; 
-        const bh = target.offsetHeight;
-        d += ` M ${x} ${y} v ${bh} h ${bw} v -${bh} z`;
-      });
-      setPath(d);
+type LayoutControl =
+  | { label: string; key: 'gridGap' | 'rowGap'; min: number; max: number; global: true }
+  | {
+      label: string;
+      key: 'boxBaseWidth' | 'titleAuthorGap' | 'authorGridGap' | 'containerPadding';
+      min: number;
+      max: number;
+      def: number;
+      global?: false;
     };
 
-    const observer = new MutationObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(update);
-    });
-    observer.observe(parent, { childList: true, subtree: true, attributes: true });
-
-    const ro = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(update);
-    });
-    ro.observe(parent);
-
-    update();
-    return () => {
-      observer.disconnect();
-      ro.disconnect();
-      cancelAnimationFrame(frame);
-    };
-  }, [s.theme.isTransparentBg, s.rows, s.theme.boxBaseWidth, s.theme.boxAspectRatio, s.gridGap, s.rowGap, s.theme.containerPadding]);
-
-  if (!s.theme.isTransparentBg) return null;
-
-  return (
-    <svg className="no-export absolute inset-0 w-full h-full pointer-events-none z-0" style={{ fill: s.theme.bgColor }}>
-      <path d={path} fillRule="evenodd" />
-    </svg>
-  );
-};
+const layoutControls: LayoutControl[] = [
+  { label: '格子宽', key: 'boxBaseWidth', min: 50, max: 800, def: 200 },
+  { label: '格子列间距', key: 'gridGap', min: 0, max: 150, global: true },
+  { label: '格子行间距', key: 'rowGap', min: 0, max: 300, global: true },
+  { label: '大标题-作者间距', key: 'titleAuthorGap', min: 0, max: 200, def: 32 },
+  { label: '作者-表格间距', key: 'authorGridGap', min: 0, max: 300, def: 32 },
+  { label: '画布边缘间距', key: 'containerPadding', min: 0, max: 200, def: 64 },
+];
 
 function App() {
   const s = useStore();
@@ -499,9 +46,11 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFilename, setPreviewFilename] = useState('oc-form.png');
   const [isFontLoading, setIsFontLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [activeTab, setActiveTab] = useState<'style' | 'layout'>('style');
+  const fontFamily = s.theme.fontFamily;
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevZoomRef = useRef(1);
@@ -518,7 +67,24 @@ function App() {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
-  React.useLayoutEffect(() => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z' || isTextEditingTarget(e.target)) {
+        return;
+      }
+      e.preventDefault();
+      if (e.shiftKey) {
+        s.redo();
+      } else {
+        s.undo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [s]);
+
+  useLayoutEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
     const oldZoom = prevZoomRef.current;
@@ -556,22 +122,31 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!s.theme) return;
-    const family = s.theme.fontFamily;
-    if (family.includes('Qiji')) {
-      setIsFontLoading(true);
-      Promise.all([
-        document.fonts.load('1em "QijiP1"'),
-        document.fonts.load('1em "QijiP2"'),
-        document.fonts.load('1em "HuiwenMincho"')
-      ]).finally(() => setIsFontLoading(false));
-    } else if (family.includes('Huiwen')) {
-      setIsFontLoading(true);
-      document.fonts.load('1em "HuiwenMincho"').finally(() => setIsFontLoading(false));
-    } else {
-      setIsFontLoading(false);
-    }
-  }, [s.theme.fontFamily]);
+    let active = true;
+    const loadSelectedFont = async () => {
+      if (fontFamily.includes('Qiji')) {
+        setIsFontLoading(true);
+        await Promise.all([
+          document.fonts.load('1em "QijiP1"'),
+          document.fonts.load('1em "QijiP2"'),
+          document.fonts.load('1em "HuiwenMincho"'),
+        ]);
+      } else if (fontFamily.includes('Huiwen')) {
+        setIsFontLoading(true);
+        await document.fonts.load('1em "HuiwenMincho"');
+      } else {
+        setIsFontLoading(false);
+        return;
+      }
+
+      if (active) setIsFontLoading(false);
+    };
+
+    void loadSelectedFont();
+    return () => {
+      active = false;
+    };
+  }, [fontFamily]);
 
   useEffect(() => {
     if (!s.theme) return;
@@ -614,6 +189,7 @@ function App() {
 
       noExportEls.forEach(el => (el as HTMLElement).style.display = '');
 
+      setPreviewFilename(`oc-form-${Date.now()}.png`);
       setPreviewUrl(dataUrl);
     } catch (err) {
       console.error(err);
@@ -633,6 +209,22 @@ function App() {
   const extraLineIndices = Array.from({ length: maxExtraLines }, (_, i) => i);
 
   const previewModalIsLight = isLightColor(s.theme.bgColor);
+  const canUndo = s.past.length > 0;
+  const canRedo = s.future.length > 0;
+  const getLayoutValue = (item: LayoutControl) => (item.global ? s[item.key] : s.theme[item.key] ?? item.def);
+  const updateLayoutValue = (item: LayoutControl, value: number | '') => {
+    if (item.global) {
+      if (item.key === 'gridGap') {
+        s.setGridGap(value);
+      } else {
+        s.setRowGap(value);
+      }
+      return;
+    }
+
+    const themePatch: Partial<AppDocument['theme']> = { [item.key]: value };
+    s.setTheme(themePatch);
+  };
 
   return (
     <div className="flex h-screen bg-[#111] text-[#eee] overflow-hidden selection:bg-blue-500/30">
@@ -659,7 +251,7 @@ function App() {
           <button onClick={() => setPreviewUrl(null)} className={`absolute top-8 right-8 ${previewModalIsLight ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-black hover:bg-black/5'} p-2 rounded-full transition-all`}><X className="w-8 h-8" /></button>
           <div className="relative max-w-full max-h-[80vh] group">
             <img src={previewUrl} className={`max-w-full max-h-[80vh] shadow-2xl rounded-sm border ${previewModalIsLight ? 'border-white/10' : 'border-black/10'}`} alt="Preview" />
-            <a href={previewUrl} download={`oc-form-${Date.now()}.png`} className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all min-w-max"><Download className="w-5 h-5" /> 下载 PNG 图片</a>
+            <a href={previewUrl} download={previewFilename} className="absolute -bottom-16 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all min-w-max"><Download className="w-5 h-5" /> 下载 PNG 图片</a>
           </div>
           <p className={`mt-24 text-sm font-medium ${previewModalIsLight ? 'text-gray-400' : 'text-gray-500'}`}>此为生成的预览图，下载后将保存为 PNG 格式</p>
         </div>
@@ -667,7 +259,31 @@ function App() {
 
       <div className="w-[340px] border-r border-[#333] bg-[#222] flex flex-col shrink-0 z-20 shadow-xl font-sans h-full">
         <div className="p-5 pb-4 flex flex-col gap-5 border-b border-[#333] shrink-0 bg-[#222] z-50">
-          <div className="flex items-center gap-3"><Layers className="w-6 h-6 text-blue-500" /><h1 className="text-xl font-bold text-white tracking-tighter uppercase">OC 制表工具</h1></div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Layers className="w-6 h-6 text-blue-500 shrink-0" />
+              <h1 className="text-xl font-bold text-white tracking-tighter uppercase truncate">OC 制表工具</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={s.undo}
+                disabled={!canUndo}
+                className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#333] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-300 transition-colors"
+                title="撤销 Cmd+Z"
+              >
+                <Undo2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={s.redo}
+                disabled={!canRedo}
+                className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#333] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-300 transition-colors"
+                title="重做 Cmd+Shift+Z"
+              >
+                <Redo2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="text-[11px] text-gray-500 font-medium">草稿会自动保存到当前浏览器</div>
         </div>
 
         <div className="flex bg-[#1a1a1a] rounded-lg p-1 gap-1 shrink-0 mt-4 mb-2 mx-5">
@@ -730,7 +346,7 @@ function App() {
                     </div>
                     <div className="space-y-1 pb-2">
                       <div className="flex justify-between text-[13px] text-gray-200 font-bold uppercase"><span>线框粗细</span><span className="text-blue-400 text-xs">{s.theme.borderWidth}px</span></div>
-                      <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                      <input type="range" min="0" max="10" value={s.theme.borderWidth} onChange={(e) => s.setTheme({ borderWidth: parseNumberInput(e.target.value) })} className="w-full h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
                     </div>
                   </div>
 
@@ -739,8 +355,8 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max={200} value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseNumberInput(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.titleSize} onChange={(e) => s.setTheme({ titleSize: parseNumberInput(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                     <div className="flex justify-between items-center py-1">
@@ -759,8 +375,8 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max={100} value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max={100} value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: parseNumberInput(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.globalSubtitleSize || 20} onChange={(e) => s.setTheme({ globalSubtitleSize: parseNumberInput(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                   </div>
@@ -770,8 +386,8 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-2">
-                        <input type="range" min="10" max="100" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
+                        <input type="range" min="10" max="100" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: parseNumberInput(e.target.value) })} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.authorFillerSize || 18} onChange={(e) => s.setTheme({ authorFillerSize: parseNumberInput(e.target.value) })} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1 text-gray-200" />
                       </div>
                     </div>
                   </div>
@@ -789,16 +405,16 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="10" max={100} value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.baseTitleSize} onChange={(e) => s.updateGridTitleSizeGlobal(parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <input type="color" value={s.rows[0]?.items[0]?.titleColor || s.theme.textColor} onChange={(e) => s.updateGridTitleColorGlobal(e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                        <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="0" max="200" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                        <input type="number" value={s.theme.baseTitleSpacing} onChange={(e) => s.updateGridTitleSpacingGlobal(parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <button onClick={() => s.setTheme({ showGridTitle: !s.theme.showGridTitle })} className={`p-1 rounded transition-colors ${s.theme.showGridTitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                           {s.theme.showGridTitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
@@ -811,16 +427,16 @@ function App() {
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                        <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="10" max={100} value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                        <input type="number" value={s.theme.baseSubtitleSize} onChange={(e) => s.updateGridSubtitleSizeGlobal(parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <input type="color" value={s.rows[0]?.items[0]?.subtitleColor || s.theme.textColor} onChange={(e) => s.updateGridSubtitleColorGlobal(e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                        <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                        <input type="range" min="0" max="200" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                        <input type="number" value={s.theme.baseSubtitleSpacing} onChange={(e) => s.updateGridSubtitleSpacingGlobal(parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                         <button onClick={() => s.updateItem(s.rows[0]?.id, s.rows[0]?.items[0]?.id, { showSubtitle: !s.rows[0]?.items[0]?.showSubtitle })} className={`p-1 rounded transition-colors ${s.theme.showGridSubtitle ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                           {s.theme.showGridSubtitle ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
@@ -834,16 +450,16 @@ function App() {
                       <div className="space-y-1">
                         <div className="text-[13px] font-bold text-gray-300 uppercase">字体调节</div>
                         <div className="flex items-center gap-3">
-                          <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
-                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                          <input type="range" min="10" max={100} value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-500" />
+                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.fontSize ?? s.theme.baseExtraLineSize} onChange={(e) => s.updateExtraLineSizeGlobal(idx, parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                           <input type="color" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.color || s.theme.textColor} onChange={(e) => s.updateExtraLineColorGlobal(idx, e.target.value)} className="w-6 h-6 border-0 bg-transparent p-0 cursor-pointer shrink-0" />
                         </div>
                       </div>
                       <div className="space-y-1">
                         <div className="text-[13px] font-bold text-gray-300 uppercase">与上方素材距离</div>
                         <div className="flex items-center gap-3">
-                          <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing ?? s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
-                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing ?? s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, e.target.value === '' ? ('' as any) : parseInt(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
+                          <input type="range" min="0" max="200" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing ?? s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] accent-blue-400" />
+                          <input type="number" value={s.rows[0]?.items[0]?.extraLines?.[idx]?.spacing ?? s.theme.baseExtraLineSpacing} onChange={(e) => s.updateExtraLineSpacingGlobal(idx, parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center font-bold text-[13px] rounded p-1" />
                           <button onClick={() => s.toggleExtraLineVisibilityGlobal(idx)} className={`p-1 rounded transition-colors ${!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-white'}`}>
                             {!s.rows[0]?.items[0]?.extraLines?.[idx]?.hidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                           </button>
@@ -874,21 +490,14 @@ function App() {
                     <option value="custom">自定义</option>
                   </select>
                 </div>
-                {[
-                  { label: '格子宽', key: 'boxBaseWidth', min: 50, max: 800, def: 200 },
-                  { label: '格子列间距', key: 'gridGap', min: 0, max: 150, global: true },
-                  { label: '格子行间距', key: 'rowGap', min: 0, max: 300, global: true },
-                  { label: '大标题-作者间距', key: 'titleAuthorGap', min: 0, max: 200, def: 32 },
-                  { label: '作者-表格间距', key: 'authorGridGap', min: 0, max: 300, def: 32 },
-                  { label: '画布边缘间距', key: 'containerPadding', min: 0, max: 200, def: 64 }
-                ].map(item => {
-                  const val = item.global ? (s as any)[item.key] : ((s.theme as any)[item.key] ?? item.def ?? 0);
+                {layoutControls.map(item => {
+                  const val = getLayoutValue(item);
                   return (
                     <div key={item.key} className="space-y-1 py-1">
                       <div className="flex justify-between font-bold text-gray-200 text-[13px] uppercase"><span>{item.label}</span><span className="text-blue-400 text-xs">{val}px</span></div>
                       <div className="flex items-center gap-3">
-                        <input type="range" min={item.min} max={item.max} value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](e.target.value === '' ? ('' as any) : parseInt(e.target.value)) : s.setTheme({ [item.key]: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                        <input type="number" value={val} onChange={(e) => item.global ? (s as any)[`set${item.key.charAt(0).toUpperCase()}${item.key.slice(1)}`](e.target.value === '' ? ('' as any) : parseInt(e.target.value)) : s.setTheme({ [item.key]: e.target.value === '' ? ('' as any) : parseInt(e.target.value) })} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
+                        <input type="range" min={item.min} max={item.max} value={val} onChange={(e) => updateLayoutValue(item, parseNumberInput(e.target.value))} className="flex-1 h-1 bg-[#333] rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                        <input type="number" value={val} onChange={(e) => updateLayoutValue(item, parseNumberInput(e.target.value))} className="w-14 bg-[#333] text-center rounded p-1 text-[13px] font-bold text-gray-200" />
                       </div>
                     </div>
                   );

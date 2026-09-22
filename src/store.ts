@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 
+const STORAGE_KEY = 'oc-form-creator:auto-save:v1';
+const HISTORY_LIMIT = 80;
+
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export interface TextLine {
@@ -34,7 +37,7 @@ export interface RowData {
   fillWidth?: boolean;
 }
 
-export interface AppState {
+export interface AppDocument {
   theme: {
     bgColor: string;
     textColor: string;
@@ -72,13 +75,18 @@ export interface AppState {
   gridGap: number | '';
   rowGap: number | '';
   rows: RowData[];
-  setTheme: (theme: Partial<AppState['theme']>) => void;
+}
+
+export interface AppState extends AppDocument {
+  past: AppDocument[];
+  future: AppDocument[];
+  setTheme: (theme: Partial<AppDocument['theme']>) => void;
   setTitle: (title: string) => void;
   setGlobalSubtitle: (t: string) => void;
   setAuthor: (author: string) => void;
   setFiller: (filler: string) => void;
-  setGridGap: (gap: number) => void;
-  setRowGap: (gap: number) => void;
+  setGridGap: (gap: number | '') => void;
+  setRowGap: (gap: number | '') => void;
   addRow: () => void;
   removeRow: (rowId: string) => void;
   toggleRowFillWidth: (rowId: string) => void;
@@ -90,16 +98,18 @@ export interface AppState {
   removeExtraLine: (rowId: string, itemId: string, lineId: string) => void;
   removeExtraLineIndexFromAll: (index: number) => void;
   updateExtraLine: (rowId: string, itemId: string, lineId: string, data: Partial<TextLine>) => void;
-  updateExtraLineSizeGlobal: (index: number, size: number) => void;
+  updateExtraLineSizeGlobal: (index: number, size: number | '') => void;
   updateExtraLineColorGlobal: (index: number, color: string) => void;
-  updateExtraLineSpacingGlobal: (index: number, spacing: number) => void;
+  updateExtraLineSpacingGlobal: (index: number, spacing: number | '') => void;
   toggleExtraLineVisibilityGlobal: (index: number) => void;
-  updateGridTitleSizeGlobal: (size: number) => void;
-  updateGridSubtitleSizeGlobal: (size: number) => void;
+  updateGridTitleSizeGlobal: (size: number | '') => void;
+  updateGridSubtitleSizeGlobal: (size: number | '') => void;
   updateGridTitleColorGlobal: (color: string) => void;
   updateGridSubtitleColorGlobal: (color: string) => void;
-  updateGridTitleSpacingGlobal: (spacing: number) => void;
-  updateGridSubtitleSpacingGlobal: (spacing: number) => void;
+  updateGridTitleSpacingGlobal: (spacing: number | '') => void;
+  updateGridSubtitleSpacingGlobal: (spacing: number | '') => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 const createEmptyItem = (): GridItem => ({
@@ -113,7 +123,7 @@ const createEmptyItem = (): GridItem => ({
   extraLines: [],
 });
 
-export const useStore = create<AppState>()((set) => ({
+const defaultDocument: AppDocument = {
   theme: {
     bgColor: '#000000',
     textColor: '#ffffff',
@@ -153,216 +163,344 @@ export const useStore = create<AppState>()((set) => ({
   rows: [
     {
       id: generateId(),
-      items: [
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', subtitleColor: '#bbbbbb', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', subtitleColor: '#bbbbbb', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-        { id: generateId(), title: '格子标题', subtitle: '格子小字', subtitleColor: '#bbbbbb', content: '', flexGrow: false, textOffsetY: 0, extraLines: [] },
-      ],
+      items: [createEmptyItem(), createEmptyItem(), createEmptyItem()],
       fillWidth: false,
-    }
+    },
   ],
+};
+
+const cloneDocument = (document: AppDocument): AppDocument => JSON.parse(JSON.stringify(document));
+
+const pickDocument = (state: AppDocument): AppDocument => ({
+  theme: cloneDocument(state).theme,
+  title: state.title,
+  globalSubtitle: state.globalSubtitle,
+  author: state.author,
+  filler: state.filler,
+  gridGap: state.gridGap,
+  rowGap: state.rowGap,
+  rows: cloneDocument(state).rows,
+});
+
+const sameDocument = (a: AppDocument, b: AppDocument) => JSON.stringify(a) === JSON.stringify(b);
+
+const normalizeDocument = (document: Partial<AppDocument>): AppDocument => ({
+  ...defaultDocument,
+  ...document,
+  theme: {
+    ...defaultDocument.theme,
+    ...(document.theme ?? {}),
+  },
+  rows: Array.isArray(document.rows) && document.rows.length > 0 ? document.rows : defaultDocument.rows,
+});
+
+const loadSavedDocument = () => {
+  if (typeof window === 'undefined') return cloneDocument(defaultDocument);
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (!saved) return cloneDocument(defaultDocument);
+    const parsed = JSON.parse(saved) as Partial<AppDocument> & { document?: Partial<AppDocument> };
+    return normalizeDocument(parsed.document ?? parsed);
+  } catch {
+    return cloneDocument(defaultDocument);
+  }
+};
+
+const withHistory = (state: AppState, patch: Partial<AppDocument>) => {
+  const current = pickDocument(state);
+  const next = normalizeDocument({ ...current, ...patch });
+  if (sameDocument(current, next)) return patch;
+
+  return {
+    ...patch,
+    past: [...state.past, current].slice(-HISTORY_LIMIT),
+    future: [],
+  };
+};
+
+const initialDocument = loadSavedDocument();
+
+export const useStore = create<AppState>()((set) => ({
+  ...initialDocument,
+  past: [],
+  future: [],
   setTheme: (themeUpdate) =>
-    set((state) => ({ theme: { ...state.theme, ...themeUpdate } })),
-  setTitle: (title) => set({ title }),
-  setGlobalSubtitle: (globalSubtitle) => set({ globalSubtitle }),
-  setAuthor: (author) => set({ author }),
-  setFiller: (filler) => set({ filler }),
-  setGridGap: (gridGap) => set({ gridGap }),
-  setRowGap: (rowGap) => set({ rowGap }),
+    set((state) => withHistory(state, { theme: { ...state.theme, ...themeUpdate } })),
+  setTitle: (title) => set((state) => withHistory(state, { title })),
+  setGlobalSubtitle: (globalSubtitle) => set((state) => withHistory(state, { globalSubtitle })),
+  setAuthor: (author) => set((state) => withHistory(state, { author })),
+  setFiller: (filler) => set((state) => withHistory(state, { filler })),
+  setGridGap: (gridGap) => set((state) => withHistory(state, { gridGap })),
+  setRowGap: (rowGap) => set((state) => withHistory(state, { rowGap })),
   addRow: () =>
     set((state) => {
       const lastRow = state.rows[state.rows.length - 1];
       const itemCount = lastRow ? lastRow.items.length : 1;
       const newItems = Array.from({ length: itemCount }, () => createEmptyItem());
-      return {
+      return withHistory(state, {
         rows: [...state.rows, { id: generateId(), items: newItems, fillWidth: lastRow?.fillWidth || false }],
-      };
+      });
     }),
   removeRow: (rowId) =>
-    set((state) => ({
-      rows: state.rows.filter((r) => r.id !== rowId),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.filter((r) => r.id !== rowId),
+      }),
+    ),
   toggleRowFillWidth: (rowId) =>
-    set((state) => ({
-      rows: state.rows.map((r) => r.id === rowId ? { ...r, fillWidth: !r.fillWidth } : r),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => (r.id === rowId ? { ...r, fillWidth: !r.fillWidth } : r)),
+      }),
+    ),
   addItemToRow: (rowId) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.id === rowId ? { ...r, items: [...r.items, createEmptyItem()] } : r
-      ),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => (r.id === rowId ? { ...r, items: [...r.items, createEmptyItem()] } : r)),
+      }),
+    ),
   removeItemFromRow: (rowId, itemId) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.id === rowId ? { ...r, items: r.items.filter((i) => i.id !== itemId) } : r
-      ),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) =>
+          r.id === rowId ? { ...r, items: r.items.filter((i) => i.id !== itemId) } : r,
+        ),
+      }),
+    ),
   updateItem: (rowId, itemId, data) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.id === rowId
-          ? {
-              ...r,
-              items: r.items.map((i) => (i.id === itemId ? { ...i, ...data } : i)),
-            }
-          : r
-      ),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) =>
+          r.id === rowId
+            ? {
+                ...r,
+                items: r.items.map((i) => (i.id === itemId ? { ...i, ...data } : i)),
+              }
+            : r,
+        ),
+      }),
+    ),
   addExtraLine: (rowId, itemId) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.id === rowId
-          ? {
-              ...r,
-              items: r.items.map((i) =>
-                i.id === itemId
-                  ? { ...i, extraLines: [...(i.extraLines || []), { id: generateId(), text: '附加文字' }] }
-                  : i
-              ),
-            }
-          : r
-      ),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) =>
+          r.id === rowId
+            ? {
+                ...r,
+                items: r.items.map((i) =>
+                  i.id === itemId
+                    ? { ...i, extraLines: [...(i.extraLines || []), { id: generateId(), text: '附加文字' }] }
+                    : i,
+                ),
+              }
+            : r,
+        ),
+      }),
+    ),
   addExtraLineToAll: () =>
-    set((state) => ({
-      rows: state.rows.map((r) => ({
-        ...r,
-        items: r.items.map((i) => ({
-          ...i,
-          extraLines: [...(i.extraLines || []), { id: generateId(), text: '统一描述', fontSize: state.theme.baseExtraLineSize, spacing: state.theme.baseExtraLineSpacing }],
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({
+            ...i,
+            extraLines: [
+              ...(i.extraLines || []),
+              {
+                id: generateId(),
+                text: '统一描述',
+                fontSize: state.theme.baseExtraLineSize,
+                spacing: state.theme.baseExtraLineSpacing,
+              },
+            ],
+          })),
         })),
-      })),
-    })),
+      }),
+    ),
   removeExtraLine: (rowId, itemId, lineId) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.id === rowId
-          ? {
-              ...r,
-              items: r.items.map((i) =>
-                i.id === itemId
-                  ? { ...i, extraLines: (i.extraLines || []).filter(l => l.id !== lineId) }
-                  : i
-              ),
-            }
-          : r
-      ),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) =>
+          r.id === rowId
+            ? {
+                ...r,
+                items: r.items.map((i) =>
+                  i.id === itemId ? { ...i, extraLines: (i.extraLines || []).filter((l) => l.id !== lineId) } : i,
+                ),
+              }
+            : r,
+        ),
+      }),
+    ),
   removeExtraLineIndexFromAll: (index) =>
-    set((state) => ({
-      rows: state.rows.map((r) => ({
-        ...r,
-        items: r.items.map((i) => ({
-          ...i,
-          extraLines: (i.extraLines || []).filter((_, idx) => idx !== index),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({
+            ...i,
+            extraLines: (i.extraLines || []).filter((_, idx) => idx !== index),
+          })),
         })),
-      })),
-    })),
+      }),
+    ),
   updateExtraLine: (rowId, itemId, lineId, data) =>
-    set((state) => ({
-      rows: state.rows.map((r) =>
-        r.id === rowId
-          ? {
-              ...r,
-              items: r.items.map((i) =>
-                i.id === itemId
-                  ? {
-                      ...i,
-                      extraLines: (i.extraLines || []).map((l) =>
-                        l.id === lineId ? { ...l, ...data } : l
-                      ),
-                    }
-                  : i
-              ),
-            }
-          : r
-      ),
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) =>
+          r.id === rowId
+            ? {
+                ...r,
+                items: r.items.map((i) =>
+                  i.id === itemId
+                    ? {
+                        ...i,
+                        extraLines: (i.extraLines || []).map((l) => (l.id === lineId ? { ...l, ...data } : l)),
+                      }
+                    : i,
+                ),
+              }
+            : r,
+        ),
+      }),
+    ),
   updateExtraLineSizeGlobal: (index, size) =>
-    set((state) => ({
-      rows: state.rows.map((r) => ({
-        ...r,
-        items: r.items.map((i) => ({
-          ...i,
-          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, fontSize: size } : l),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({
+            ...i,
+            extraLines: (i.extraLines || []).map((l, idx) => (idx === index ? { ...l, fontSize: size } : l)),
+          })),
         })),
-      })),
-    })),
+      }),
+    ),
   updateExtraLineColorGlobal: (index, color) =>
-    set((state) => ({
-      rows: state.rows.map((r) => ({
-        ...r,
-        items: r.items.map((i) => ({
-          ...i,
-          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, color: color } : l),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({
+            ...i,
+            extraLines: (i.extraLines || []).map((l, idx) => (idx === index ? { ...l, color } : l)),
+          })),
         })),
-      })),
-    })),
+      }),
+    ),
   updateExtraLineSpacingGlobal: (index, spacing) =>
-    set((state) => ({
-      rows: state.rows.map((r) => ({
-        ...r,
-        items: r.items.map((i) => ({
-          ...i,
-          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, spacing: spacing } : l),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({
+            ...i,
+            extraLines: (i.extraLines || []).map((l, idx) => (idx === index ? { ...l, spacing } : l)),
+          })),
         })),
-      })),
-    })),
+      }),
+    ),
   toggleExtraLineVisibilityGlobal: (index) =>
-    set((state) => ({
-      rows: state.rows.map((r) => ({
-        ...r,
-        items: r.items.map((i) => ({
-          ...i,
-          extraLines: (i.extraLines || []).map((l, idx) => idx === index ? { ...l, hidden: !l.hidden } : l),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({
+            ...i,
+            extraLines: (i.extraLines || []).map((l, idx) => (idx === index ? { ...l, hidden: !l.hidden } : l)),
+          })),
         })),
-      })),
-    })),
+      }),
+    ),
   updateGridTitleSizeGlobal: (size) =>
-    set((state) => ({
-      theme: { ...state.theme, baseTitleSize: size },
-      rows: state.rows.map(r => ({
-        ...r,
-        items: r.items.map(i => ({ ...i, titleSize: size }))
-      }))
-    })),
+    set((state) =>
+      withHistory(state, {
+        theme: { ...state.theme, baseTitleSize: size },
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({ ...i, titleSize: size })),
+        })),
+      }),
+    ),
   updateGridSubtitleSizeGlobal: (size) =>
-    set((state) => ({
-      theme: { ...state.theme, baseSubtitleSize: size },
-      rows: state.rows.map(r => ({
-        ...r,
-        items: r.items.map(i => ({ ...i, subtitleSize: size }))
-      }))
-    })),
+    set((state) =>
+      withHistory(state, {
+        theme: { ...state.theme, baseSubtitleSize: size },
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({ ...i, subtitleSize: size })),
+        })),
+      }),
+    ),
   updateGridTitleColorGlobal: (color) =>
-    set((state) => ({
-      rows: state.rows.map(r => ({
-        ...r,
-        items: r.items.map(i => ({ ...i, titleColor: color }))
-      }))
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({ ...i, titleColor: color })),
+        })),
+      }),
+    ),
   updateGridSubtitleColorGlobal: (color) =>
-    set((state) => ({
-      rows: state.rows.map(r => ({
-        ...r,
-        items: r.items.map(i => ({ ...i, subtitleColor: color }))
-      }))
-    })),
+    set((state) =>
+      withHistory(state, {
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({ ...i, subtitleColor: color })),
+        })),
+      }),
+    ),
   updateGridTitleSpacingGlobal: (spacing) =>
-    set((state) => ({
-      theme: { ...state.theme, baseTitleSpacing: spacing },
-      rows: state.rows.map(r => ({
-        ...r,
-        items: r.items.map(i => ({ ...i, titleSpacing: spacing }))
-      }))
-    })),
+    set((state) =>
+      withHistory(state, {
+        theme: { ...state.theme, baseTitleSpacing: spacing },
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({ ...i, titleSpacing: spacing })),
+        })),
+      }),
+    ),
   updateGridSubtitleSpacingGlobal: (spacing) =>
-    set((state) => ({
-      theme: { ...state.theme, baseSubtitleSpacing: spacing },
-      rows: state.rows.map(r => ({
-        ...r,
-        items: r.items.map(i => ({ ...i, subtitleSpacing: spacing }))
-      }))
-    })),
+    set((state) =>
+      withHistory(state, {
+        theme: { ...state.theme, baseSubtitleSpacing: spacing },
+        rows: state.rows.map((r) => ({
+          ...r,
+          items: r.items.map((i) => ({ ...i, subtitleSpacing: spacing })),
+        })),
+      }),
+    ),
+  undo: () =>
+    set((state) => {
+      const previous = state.past.at(-1);
+      if (!previous) return {};
+      const current = pickDocument(state);
+      return {
+        ...cloneDocument(previous),
+        past: state.past.slice(0, -1),
+        future: [current, ...state.future].slice(0, HISTORY_LIMIT),
+      };
+    }),
+  redo: () =>
+    set((state) => {
+      const next = state.future[0];
+      if (!next) return {};
+      const current = pickDocument(state);
+      return {
+        ...cloneDocument(next),
+        past: [...state.past, current].slice(-HISTORY_LIMIT),
+        future: state.future.slice(1),
+      };
+    }),
 }));
+
+if (typeof window !== 'undefined') {
+  let saveTimer: number | undefined;
+  useStore.subscribe((state) => {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      const document = pickDocument(state);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, document }));
+    }, 250);
+  });
+}
