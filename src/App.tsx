@@ -269,10 +269,10 @@ function App() {
       <div className="w-[340px] border-r border-[#333] bg-[#222] flex flex-col shrink-0 z-20 shadow-xl font-sans h-full">
         <div className="p-5 pb-4 flex flex-col gap-5 border-b border-[#333] shrink-0 bg-[#222] z-50">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+            <a href="https://recorderstudio.taile36706.ts.net/oc-workspace-home-preview/" aria-label="返回工作间主页" className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
               <Layers className="w-6 h-6 text-blue-500 shrink-0" />
               <h1 className="text-xl font-bold text-white tracking-tighter uppercase truncate">OC 制表工具</h1>
-            </div>
+            </a>
             <div className="flex items-center gap-1">
               <button
                 onClick={s.undo}
