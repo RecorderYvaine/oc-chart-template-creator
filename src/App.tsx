@@ -75,6 +75,7 @@ function App() {
   const [isFontLoading, setIsFontLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [activeTab, setActiveTab] = useState<'style' | 'layout'>('style');
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const fontFamily = s.theme.fontFamily;
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -266,6 +267,24 @@ function App() {
         </div>
       )}
 
+      {resetConfirmOpen && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="reset-dialog-title">
+          <div className="w-full max-w-md rounded-2xl border border-[#444] bg-[#222] p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-red-500/15 p-2 text-red-400"><RotateCcw className="h-5 w-5" /></div>
+              <div>
+                <h2 id="reset-dialog-title" className="text-lg font-bold text-white">Reset 当前表格？</h2>
+                <p className="mt-2 text-sm leading-6 text-gray-400">当前标题、样式、布局和格子内容都会恢复为默认值。这个操作可以使用撤销恢复。</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setResetConfirmOpen(false)} className="rounded-lg border border-[#444] px-4 py-2 text-sm font-bold text-gray-300 transition-colors hover:bg-[#333] hover:text-white">取消</button>
+              <button onClick={() => { s.resetDocument(); setResetConfirmOpen(false); }} className="rounded-lg bg-red-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-400">确认 Reset</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-[340px] border-r border-[#333] bg-[#222] flex flex-col shrink-0 z-20 shadow-xl font-sans h-full">
         <div className="p-5 pb-4 flex flex-col gap-5 border-b border-[#333] shrink-0 bg-[#222] z-50">
           <div className="flex items-center justify-between gap-3">
@@ -289,6 +308,13 @@ function App() {
                 title="重做 Cmd+Shift+Z"
               >
                 <Redo2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setResetConfirmOpen(true)}
+                className="rounded-lg p-2 text-gray-300 transition-colors hover:bg-red-500/15 hover:text-red-300"
+                title="Reset 表格"
+              >
+                <RotateCcw className="h-4 w-4" />
               </button>
             </div>
           </div>

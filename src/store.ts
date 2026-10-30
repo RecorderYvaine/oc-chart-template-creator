@@ -110,6 +110,7 @@ export interface AppState extends AppDocument {
   updateGridSubtitleSpacingGlobal: (spacing: number | '') => void;
   undo: () => void;
   redo: () => void;
+  resetDocument: () => void;
 }
 
 const createEmptyItem = (): GridItem => ({
@@ -490,6 +491,16 @@ export const useStore = create<AppState>()((set) => ({
         ...cloneDocument(next),
         past: [...state.past, current].slice(-HISTORY_LIMIT),
         future: state.future.slice(1),
+      };
+    }),
+  resetDocument: () =>
+    set((state) => {
+      const current = pickDocument(state);
+      const next = cloneDocument(defaultDocument);
+      return {
+        ...next,
+        past: [...state.past, current].slice(-HISTORY_LIMIT),
+        future: [],
       };
     }),
 }));
